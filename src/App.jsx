@@ -14,6 +14,7 @@ import { exerciseProgressSeries, scaleChartPoints, workoutDurationSeries } from 
 const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
 const workoutById = new Map(workouts.map((workout) => [workout.id, workout]))
 const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+const DEFAULT_WEIGHT_KG = 16
 
 function formatDate(value) {
   return dateFormatter.format(new Date(value))
@@ -44,7 +45,7 @@ function EmptyView({ title, children, chooseView }) {
       <p className="eyebrow">No entries yet</p>
       <h1>{title}</h1>
       <p>{children}</p>
-      <button className="primary-button" type="button" onClick={() => chooseView('train')}>Go to Train</button>
+      <button className="primary-button" type="button" onClick={() => chooseView('home')}>Go to Home</button>
     </main>
   )
 }
@@ -204,7 +205,7 @@ function RepsLogger({ log, updateLog }) {
           </fieldset>
         ))}
       </div>
-      <button className="secondary-button" type="button" onClick={() => updateLog({ ...log, sets: [...log.sets, { reps: '', weightKg: '' }] })}>
+      <button className="secondary-button" type="button" onClick={() => updateLog({ ...log, sets: [...log.sets, { reps: '', weightKg: DEFAULT_WEIGHT_KG }] })}>
         + Add set
       </button>
       {log.sets.length === 0 && <p className="empty-note">No sets logged.</p>}
@@ -283,6 +284,77 @@ function ExerciseRow({ exercise, number, log, updateLog, now }) {
   )
 }
 
+function HomeView({ activeSession, openWorkout, startWorkout }) {
+  return (
+    <main className="app-home">
+      <header className="app-page-header">
+        <div><p className="eyebrow">Training plan</p><h1>Workouts</h1></div>
+        <p>Choose a workout to view the exercises or start a session.</p>
+      </header>
+      <section className="workout-overview" aria-label="Workout overview">
+        {workouts.map((workout) => {
+          const workoutExercises = workout.exerciseIds.map((id) => exerciseById.get(id))
+          const isActive = activeSession?.workoutId === workout.id
+          return (
+            <article className="workout-card" key={workout.id}>
+              <MediaFrame exercise={workoutExercises[0]} />
+              <div className="workout-card-copy">
+                <div className="workout-card-title"><span>Workout {workout.label}</span><strong>{workout.exerciseIds.length} exercises</strong></div>
+                <h2>{workout.name}</h2>
+                <p>{workout.note}</p>
+                <ul aria-label={`Exercises in workout ${workout.label}`}>
+                  {workoutExercises.map((exercise) => <li key={exercise.id}>{exercise.name}</li>)}
+                </ul>
+              </div>
+              <div className="workout-card-actions">
+                <button className="secondary-button" type="button" onClick={() => openWorkout(workout.id)}>View workout</button>
+                <button className="primary-button" type="button" disabled={Boolean(activeSession) && !isActive} onClick={() => isActive ? openWorkout(workout.id) : startWorkout(workout)}>{isActive ? 'Continue session' : 'Start session'}</button>
+              </div>
+            </article>
+          )
+        })}
+      </section>
+    </main>
+  )
+}
+
+function WorkoutDetailView({ workout, activeSession, now, message, updateExercise, startWorkout, finishSession, cancelSession, openWorkout, goHome, canFinish, hasActiveTimer }) {
+  const isActive = activeSession?.workoutId === workout.id
+  return (
+    <main className="workout-detail">
+      <button className="back-button" type="button" onClick={goHome}>← All workouts</button>
+      <header className="detail-header">
+        <div><p className="eyebrow">Workout {workout.label}</p><h1>{workout.name}</h1></div>
+        <div className="detail-summary"><strong>{workout.exerciseIds.length} exercises</strong><p>{workout.note}</p></div>
+      </header>
+      <p className="status-message" role="status">{message}</p>
+      {isActive ? (
+        <section className="session-bar" aria-label="Active workout">
+          <div><p className="eyebrow">Session in progress</p><h2>Workout {workout.label}</h2></div>
+          <div className="overall-timer"><span>Elapsed</span><strong>{formatDuration(Math.max(0, now - activeSession.startedAt))}</strong></div>
+          <div className="session-actions">
+            <button className="primary-button" type="button" onClick={finishSession} disabled={!canFinish}>Finish workout</button>
+            <button className="text-button" type="button" onClick={cancelSession}>Cancel session</button>
+          </div>
+          {!canFinish && <p className="finish-note">{hasActiveTimer ? 'Stop or reset each exercise timer before you finish.' : 'Log at least one valid set to finish.'}</p>}
+        </section>
+      ) : activeSession ? (
+        <button className="primary-button detail-start" type="button" onClick={() => openWorkout(activeSession.workoutId)}>Continue active workout</button>
+      ) : (
+        <button className="primary-button detail-start" type="button" onClick={() => startWorkout(workout)}>Start session with 16 kg</button>
+      )}
+      <section className="detail-exercises" aria-labelledby={`${workout.id}-exercises`}>
+        <h2 id={`${workout.id}-exercises`}>Exercises</h2>
+        <ol className="exercise-list">
+          {workout.exerciseIds.map((id, index) => (
+            <ExerciseRow key={id} exercise={exerciseById.get(id)} number={index + 1} log={isActive ? activeSession.exercises[id] : null} updateLog={(log) => updateExercise(id, log)} now={now} />
+          ))}
+        </ol>
+      </section>
+    </main>
+  )
+}
+
 function createSession(workout) {
   return {
     workoutId: workout.id,
@@ -315,8 +387,9 @@ function validRepsSet(set) {
 }
 
 function App() {
-  const [view, setView] = useState('train')
+  const [view, setView] = useState('home')
   const [activeSession, setActiveSession] = useState(restoreSession)
+  const [selectedWorkoutId, setSelectedWorkoutId] = useState(() => activeSession?.workoutId ?? null)
   const [sessionLog, setSessionLog] = useState(loadSessionLog)
   const [now, setNow] = useState(() => Date.now())
   const [message, setMessage] = useState('')
@@ -332,7 +405,6 @@ function App() {
     return () => clearInterval(interval)
   }, [hasActiveSession])
 
-  const activeWorkout = activeSession && workouts.find(({ id }) => id === activeSession.workoutId)
   const repLogsValid = activeSession && Object.entries(activeSession.exercises).every(([id, log]) => (
     exerciseById.get(id).mode !== 'reps' || log.sets.every(validRepsSet)
   ))
@@ -342,6 +414,19 @@ function App() {
 
   const updateExercise = (id, log) => {
     setActiveSession((session) => ({ ...session, exercises: { ...session.exercises, [id]: log } }))
+  }
+
+  const openWorkout = (workoutId) => {
+    setView('home')
+    setSelectedWorkoutId(workoutId)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
+  }
+
+  const startWorkout = (workout) => {
+    setActiveSession(createSession(workout))
+    setNow(Date.now())
+    setMessage('')
+    openWorkout(workout.id)
   }
 
   const finishSession = () => {
@@ -379,6 +464,7 @@ function App() {
 
   const chooseView = (nextView) => {
     setView(nextView)
+    if (nextView === 'home') setSelectedWorkoutId(null)
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
@@ -390,9 +476,9 @@ function App() {
   return (
     <>
       <header className="site-header">
-        <button className="wordmark" type="button" onClick={() => chooseView('train')} aria-label="Work Set home">WORK<span>/</span>SET</button>
+        <button className="wordmark" type="button" onClick={() => chooseView('home')} aria-label="Work Set home">WORK<span>/</span>SET</button>
         <nav aria-label="Primary navigation">
-          {['train', 'progress', 'log'].map((item) => (
+          {['home', 'progress', 'log'].map((item) => (
             <button className={view === item ? 'active' : ''} type="button" key={item} onClick={() => chooseView(item)} aria-current={view === item ? 'page' : undefined}>
               {item}
             </button>
@@ -401,85 +487,13 @@ function App() {
         <p className="edition">Field log / 01</p>
       </header>
 
-      {view === 'train' ? (
-        <main id="top">
-          <section className="hero" id="train" aria-labelledby="page-title">
-            <p className="eyebrow">Two-day kettlebell protocol</p>
-            <h1 id="page-title">Back. Shoulders.<br /><em>Rotation.</em></h1>
-            <div className="hero-note">
-              <p>Upper-body strength without meaningful squat, lunge, or posterior-chain volume.</p>
-              <dl>
-                <div><dt>Frequency</dt><dd>2 days / week</dd></div>
-                <div><dt>Duration</dt><dd>25–35 min</dd></div>
-                <div><dt>Effort</dt><dd>3 reps in reserve</dd></div>
-              </dl>
-            </div>
-            <div className="issue-mark" aria-hidden="true">02<span>sessions</span></div>
-          </section>
-
-          <p className="status-message" role="status">{message}</p>
-
-          {activeSession && (
-            <section className="session-bar" aria-label="Active workout">
-              <div>
-                <p className="eyebrow">Session in progress</p>
-                <h2>Workout {activeWorkout.label}</h2>
-              </div>
-              <div className="overall-timer"><span>Elapsed</span><strong>{formatDuration(Math.max(0, now - activeSession.startedAt))}</strong></div>
-              <div className="session-actions">
-                <button className="primary-button" type="button" onClick={finishSession} disabled={!canFinish}>Finish workout</button>
-                <button className="text-button" type="button" onClick={cancelSession}>Cancel session</button>
-              </div>
-              {!canFinish && <p className="finish-note">{hasActiveTimer ? 'Stop or reset each exercise timer before you finish.' : 'Log at least one valid set to finish.'}</p>}
-            </section>
-          )}
-
-          <div className="workouts">
-            {(activeWorkout ? [activeWorkout] : workouts).map((workout) => (
-              <section className="workout" key={workout.id} aria-labelledby={`${workout.id}-title`}>
-                <header className="workout-header">
-                  <p>Workout <strong>{workout.label}</strong></p>
-                  <div>
-                    <h2 id={`${workout.id}-title`}>{workout.name}</h2>
-                    <p>{workout.note}</p>
-                    {!activeSession && <button className="primary-button begin-button" type="button" onClick={() => { setActiveSession(createSession(workout)); setNow(Date.now()); setMessage('') }}>Begin workout {workout.label}</button>}
-                  </div>
-                </header>
-                <ol className="exercise-list">
-                  {workout.exerciseIds.map((id, index) => (
-                    <ExerciseRow
-                      key={id}
-                      exercise={exerciseById.get(id)}
-                      number={index + 1}
-                      log={activeSession?.exercises[id]}
-                      updateLog={(log) => updateExercise(id, log)}
-                      now={now}
-                    />
-                  ))}
-                </ol>
-              </section>
-            ))}
-          </div>
-
-          {!activeSession && <aside className="progression" aria-labelledby="progression-title">
-            <p className="eyebrow">Loading notes</p>
-            <h2 id="progression-title">Build the work.<br />Keep the form.</h2>
-            <ol>
-              <li><strong>Weeks 1–2</strong><span>Two sets or rounds per workout.</span></li>
-              <li><strong>Weeks 3–4</strong><span>Use three if recovery remains good.</span></li>
-              <li><strong>After</strong><span>Add reps or weight, not both in one week.</span></li>
-            </ol>
-          </aside>}
-        </main>
-      ) : view === 'progress'
+      {view === 'home' ? selectedWorkoutId
+        ? <WorkoutDetailView workout={workoutById.get(selectedWorkoutId)} activeSession={activeSession} now={now} message={message} updateExercise={updateExercise} startWorkout={startWorkout} finishSession={finishSession} cancelSession={cancelSession} openWorkout={openWorkout} goHome={() => chooseView('home')} canFinish={canFinish} hasActiveTimer={hasActiveTimer} />
+        : <HomeView activeSession={activeSession} openWorkout={openWorkout} startWorkout={startWorkout} />
+        : view === 'progress'
         ? <ProgressView sessions={sessionLog} chooseView={chooseView} />
         : <LogView sessions={sessionLog} chooseView={chooseView} deleteSession={deleteSession} />}
 
-      <footer className="site-footer">
-        <strong>Train with control.</strong>
-        <p>Stop any movement that causes sharp pain, numbness, or loss of control.</p>
-        <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>Return to top ↑</button>
-      </footer>
     </>
   )
 }

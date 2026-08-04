@@ -102,6 +102,31 @@ h1 em { color: var(--orange); font-style: italic; }
 .text-button { padding: 2px; border: 0; background: transparent; font-size: .65rem; font-weight: 700; text-decoration: underline; text-underline-offset: 4px; text-transform: uppercase; cursor: pointer; }
 .begin-button { margin-top: 26px; }
 .status-message { width: min(100% - 40px, 1380px); min-height: 1.4em; margin: 24px auto 0; font-size: .75rem; font-weight: 700; text-transform: uppercase; }
+.app-home, .workout-detail { width: min(100% - 32px, 1120px); min-height: calc(100vh - 140px); margin: 0 auto; overflow: visible; padding: 48px 0 80px; }
+.app-page-header { display: flex; align-items: end; justify-content: space-between; gap: 40px; padding-bottom: 28px; border-bottom: 2px solid var(--ink); }
+.app-page-header h1, .detail-header h1 { margin: 0; font-size: clamp(3.8rem, 8vw, 7rem); line-height: .82; }
+.app-page-header > p { max-width: 390px; margin: 0; font: 500 .95rem/1.55 'Source Serif 4', serif; }
+.workout-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding-top: 28px; }
+.workout-card { display: grid; grid-template-rows: 220px 1fr auto; border: 2px solid var(--ink); background: rgb(255 255 255 / 16%); }
+.workout-card .media-frame { min-height: 0; border-bottom: 2px solid var(--ink); }
+.workout-card-copy { padding: 22px; }
+.workout-card-title { display: flex; justify-content: space-between; gap: 16px; font-size: .61rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.workout-card-title span { color: var(--orange); }
+.workout-card h2 { margin: 18px 0 10px; font-size: clamp(2rem, 4vw, 3.2rem); line-height: .9; }
+.workout-card-copy > p { min-height: 3em; margin: 0 0 18px; font: 500 .82rem/1.5 'Source Serif 4', serif; }
+.workout-card ul { columns: 2; gap: 24px; margin: 0; padding: 14px 0 0; border-top: 1px solid var(--line); list-style-position: inside; }
+.workout-card li { margin-bottom: 7px; font-size: .63rem; line-height: 1.35; }
+.workout-card-actions { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; padding: 0 22px 22px; }
+.back-button { margin-bottom: 34px; padding: 0; border: 0; background: none; font-size: .68rem; font-weight: 700; letter-spacing: .08em; text-decoration: underline; text-underline-offset: 4px; text-transform: uppercase; cursor: pointer; }
+.detail-header { display: grid; grid-template-columns: 2fr 1fr; gap: 40px; align-items: end; padding-bottom: 34px; border-bottom: 2px solid var(--ink); }
+.detail-header .eyebrow { color: var(--orange); }
+.detail-summary { padding-top: 18px; border-top: 1px solid var(--ink); }
+.detail-summary strong { font-size: .68rem; letter-spacing: .1em; text-transform: uppercase; }
+.detail-summary p { margin: 12px 0 0; font: 500 .86rem/1.5 'Source Serif 4', serif; }
+.detail-start { margin: 24px 0 0; }
+.detail-exercises { padding-top: 54px; }
+.detail-exercises > h2 { margin: 0 0 22px; font-size: 2.4rem; }
+.workout-detail .session-bar { margin-top: 24px; }
 .session-bar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto auto; gap: 28px; align-items: center; padding: 20px clamp(20px, 4vw, 64px); border-bottom: 2px solid var(--ink); background: var(--orange); }
 .session-bar .eyebrow { margin-bottom: 4px; }
 .session-bar h2 { margin: 0; font-size: 2.4rem; line-height: 1; }
@@ -182,15 +207,14 @@ select { min-height: 46px; padding: 8px 38px 8px 10px; border: 2px solid var(--i
 .progression ol { margin: 0; padding: 0; border-top: 2px solid var(--ink); list-style: none; }
 .progression li { display: grid; grid-template-columns: 100px 1fr; padding: 18px 0; border-bottom: 1px solid var(--ink); font-size: .82rem; line-height: 1.5; }
 .progression li strong { text-transform: uppercase; }
-.site-footer { display: grid; grid-template-columns: 1fr 2fr auto; gap: 30px; align-items: start; padding: 38px clamp(20px, 4vw, 64px); background: var(--ink); color: var(--paper); font-size: .72rem; line-height: 1.5; }
-.site-footer strong { color: var(--orange); text-transform: uppercase; }
-.site-footer p { margin: 0; }
-.site-footer button { justify-self: end; padding: 0; border: 0; background: none; color: var(--paper); font-size: inherit; text-decoration: underline; text-underline-offset: 4px; cursor: pointer; }
 
 @media (max-width: 760px) {
-  .site-header { grid-template-columns: 1fr auto; padding: 14px 20px; }
-  .edition { display: none; }
-  nav { gap: 14px; font-size: .62rem; }
+  body { padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+  .site-header { position: fixed; right: 0; bottom: 0; left: 0; z-index: 20; display: block; padding: 0 12px env(safe-area-inset-bottom); border-top: 2px solid var(--ink); border-bottom: 0; background: var(--paper); }
+  .wordmark, .edition { display: none; }
+  nav { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0; font-size: .62rem; }
+  nav button { min-height: 62px; }
+  nav button::after { top: 0; bottom: auto; }
   .hero { display: block; min-height: auto; padding: 74px 20px 58px; }
   .hero > .eyebrow { margin-bottom: 40px; }
   h1 { font-size: clamp(4.4rem, 22vw, 7rem); }
@@ -233,8 +257,18 @@ select { min-height: 46px; padding: 8px 38px 8px 10px; border: 2px solid var(--i
   .log-duration { grid-column: 2; text-align: left; }
   .log-entry details, .delete-button { margin-left: 74px; }
   .logged-exercises { grid-template-columns: 1fr; }
-  .site-footer { grid-template-columns: 1fr; }
-  .site-footer button { justify-self: start; }
+  .app-home, .workout-detail { min-height: calc(100vh - 64px); padding: 30px 0 48px; }
+  .app-page-header { display: block; }
+  .app-page-header h1, .detail-header h1 { font-size: 4.2rem; }
+  .app-page-header > p { margin-top: 20px; }
+  .workout-overview { grid-template-columns: 1fr; gap: 18px; padding-top: 20px; }
+  .workout-card { grid-template-rows: 160px auto auto; }
+  .workout-card-copy { padding: 18px; }
+  .workout-card-copy > p { min-height: 0; }
+  .workout-card-actions { padding: 0 18px 18px; }
+  .workout-card-actions button { padding-right: 8px; padding-left: 8px; }
+  .detail-header { grid-template-columns: 1fr; gap: 24px; }
+  .detail-exercises { padding-top: 42px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
