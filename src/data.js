@@ -7,6 +7,7 @@ export const exercises = [
     cue: 'Brace your free hand on a sturdy surface. Pull toward your hip and pause for two seconds at the top.',
     tags: ['Upper back', 'Lats'],
     media: '/media/supported-one-arm-row.gif',
+    source: 'https://www.youtube.com/watch?v=mt7j2azpbKg',
   },
   {
     id: 'floor-kettlebell-pullover',
@@ -16,6 +17,7 @@ export const exercises = [
     cue: 'Keep your ribs down. Only lower the bell as far as you can without arching your lower back.',
     tags: ['Lats', 'Shoulders'],
     media: '/media/floor-kettlebell-pullover.gif',
+    source: 'https://www.youtube.com/watch?v=ZDwGVX0w7k4',
   },
   {
     id: 'half-kneeling-strict-press',
@@ -25,16 +27,17 @@ export const exercises = [
     cue: 'Squeeze the bell firmly, keep your ribs stacked over your pelvis and press without leaning sideways.',
     tags: ['Shoulders', 'Core control'],
     media: '/media/half-kneeling-strict-press.gif',
+    source: 'https://www.youtube.com/watch?v=wlAJN3GzJWA',
   },
   {
-    id: 'bottom-up-rack-hold',
-    name: 'Bottom-up rack hold',
-    prescription: '15–25 sec / side',
-    mode: 'duration',
-    targetDuration: 20,
-    cue: 'Use a light bell. Keep your wrist vertical and elbow close to your ribs. Progress to a bottom-up press later.',
+    id: 'bottoms-up-press',
+    name: 'Bottoms-up press',
+    prescription: '5–8 / side',
+    mode: 'reps',
+    cue: 'Use a light bell. Crush the handle, keep your wrist vertical and press without letting the bell tip.',
     tags: ['Shoulder stability', 'Grip'],
-    media: '/media/bottom-up-rack-hold.gif',
+    media: '/media/bottoms-up-press.gif',
+    source: 'https://www.youtube.com/watch?v=UCkeocW0BdI',
   },
   {
     id: 'kettlebell-arm-bar',
@@ -44,6 +47,7 @@ export const exercises = [
     cue: 'Move slowly and keep the loaded arm vertical. Treat it as controlled shoulder practice, not an aggressive stretch.',
     tags: ['Shoulder control', 'Thoracic rotation'],
     media: '/media/kettlebell-arm-bar.gif',
+    source: 'https://www.youtube.com/watch?v=4Ll2Q_vwEG8',
   },
   {
     id: 'suitcase-carry-or-march',
@@ -54,6 +58,7 @@ export const exercises = [
     cue: 'Stand tall without leaning away from the bell. Walk slowly, or march in place if space is limited.',
     tags: ['Grip', 'Anti-rotation'],
     media: '/media/suitcase-carry-or-march.gif',
+    source: 'https://www.youtube.com/watch?v=mDmDQm3152E',
   },
   {
     id: 'tall-kneeling-halo',
@@ -63,6 +68,7 @@ export const exercises = [
     cue: 'Circle close around your head while keeping your ribs down and neck relaxed.',
     tags: ['Shoulder mobility', 'Upper back'],
     media: '/media/tall-kneeling-halo.gif',
+    source: 'https://www.youtube.com/watch?v=0esYCS6dFQk',
   },
   {
     id: 'tall-kneeling-chop',
@@ -72,6 +78,7 @@ export const exercises = [
     cue: 'Move the bell diagonally across your body. Rotate through your upper back while keeping your hips controlled.',
     tags: ['Rotation', 'Obliques'],
     media: '/media/tall-kneeling-chop.gif',
+    source: 'https://www.youtube.com/watch?v=BslVJKQXlcQ',
   },
   {
     id: 'half-kneeling-rotational-press',
@@ -81,15 +88,17 @@ export const exercises = [
     cue: 'Start light. Rotate smoothly through your torso and finish with the bell controlled overhead—never force the range.',
     tags: ['Shoulders', 'Rotation'],
     media: '/media/half-kneeling-rotational-press.gif',
+    source: 'https://www.youtube.com/watch?v=9tbeLypLKHg',
   },
   {
-    id: 'low-windmill',
-    name: 'Low windmill',
+    id: 'kettlebell-windmill',
+    name: 'Kettlebell windmill',
     prescription: '5–6 / side',
     mode: 'reps',
-    cue: 'Hold the bell in the lower hand. Hinge sideways with a long spine and watch the upper hand. Earn the overhead version later.',
+    cue: 'Hold the bell overhead with a locked arm. Push your hip sideways, keep a long spine and watch the bell.',
     tags: ['Rotation', 'Shoulder stability'],
-    media: '/media/low-windmill.gif',
+    media: '/media/kettlebell-windmill.gif',
+    source: 'https://www.youtube.com/watch?v=MP9GRrr18Yc',
   },
   {
     id: 'figure-eight-to-hold',
@@ -99,6 +108,7 @@ export const exercises = [
     cue: 'Pass the bell behind one leg and receive it securely at chest height. Stay smooth rather than rushing.',
     tags: ['Coordination', 'Rotation'],
     media: '/media/figure-eight-to-hold.gif',
+    source: 'https://www.youtube.com/watch?v=ukc7kuFBlGY',
   },
   {
     id: 'around-the-body-pass',
@@ -106,9 +116,10 @@ export const exercises = [
     prescription: '20–30 sec / direction',
     mode: 'duration',
     targetDuration: 20,
-    cue: 'Pass the bell close around your body. Keep your torso quiet and make every hand-off deliberate.',
+    cue: 'Pass the bell close around your body, receive it at shoulder height and pause before the next circle.',
     tags: ['Shoulders', 'Anti-rotation'],
     media: '/media/around-the-body-pass.gif',
+    source: 'https://www.youtube.com/watch?v=nj26JAvAl-U',
   },
 ]
 

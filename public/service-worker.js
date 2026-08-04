@@ -1,5 +1,22 @@
-const CACHE = 'work-set-v1'
-const APP_SHELL = ['/', '/manifest.webmanifest', '/icons/icon-192.png', '/icons/icon-512.png']
+const CACHE = 'work-set-v6'
+const APP_SHELL = [
+  '/',
+  '/manifest.webmanifest',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png',
+  '/media/supported-one-arm-row.gif',
+  '/media/floor-kettlebell-pullover.gif',
+  '/media/half-kneeling-strict-press.gif',
+  '/media/bottoms-up-press.gif',
+  '/media/kettlebell-arm-bar.gif',
+  '/media/suitcase-carry-or-march.gif',
+  '/media/tall-kneeling-halo.gif',
+  '/media/tall-kneeling-chop.gif',
+  '/media/half-kneeling-rotational-press.gif',
+  '/media/kettlebell-windmill.gif',
+  '/media/figure-eight-to-hold.gif',
+  '/media/around-the-body-pass.gif',
+]
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(APP_SHELL)))

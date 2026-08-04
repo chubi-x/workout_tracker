@@ -31,7 +31,7 @@ const active = {
     'supported-one-arm-row': { sets: [] },
     'floor-kettlebell-pullover': { sets: [] },
     'half-kneeling-strict-press': { sets: [] },
-    'bottom-up-rack-hold': { targetDuration: 20, sets: [], timer: { elapsedMs: 0, startedAt: null } },
+    'bottoms-up-press': { sets: [] },
     'kettlebell-arm-bar': { sets: [] },
     'suitcase-carry-or-march': { targetDuration: 30, sets: [], timer: { elapsedMs: 0, startedAt: null } },
   },
@@ -40,7 +40,7 @@ saveActiveSession(active, storage)
 assert.deepEqual(loadActiveSession(storage), active)
 values.set(ACTIVE_SESSION_KEY, '{bad json')
 assert.equal(loadActiveSession(storage), null)
-values.set(ACTIVE_SESSION_KEY, JSON.stringify({ ...active, exercises: { ...active.exercises, 'bottom-up-rack-hold': { targetDuration: 20, sets: [] } } }))
+values.set(ACTIVE_SESSION_KEY, JSON.stringify({ ...active, exercises: { ...active.exercises, 'suitcase-carry-or-march': { targetDuration: 30, sets: [] } } }))
 assert.equal(loadActiveSession(storage), null)
 saveActiveSession(active, storage)
 saveActiveSession(null, storage)

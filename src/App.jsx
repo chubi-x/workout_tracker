@@ -155,7 +155,12 @@ function MediaFrame({ exercise }) {
         <span>Motion study</span>
         Demonstration stopped
       </span>
-      <button className="media-control" type="button" onClick={() => setPlaying((value) => !value)}>{playing ? 'Stop animation' : 'Play animation'}</button>
+      <a className="media-source" href={exercise.source} target="_blank" rel="noopener noreferrer">Tutorial ↗</a>
+      <button className="media-control" type="button" aria-label={playing ? 'Stop animation' : 'Play animation'} onClick={() => setPlaying((value) => !value)}>
+        {playing
+          ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /></svg>
+          : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5 13 8l-9 5.5z" /></svg>}
+      </button>
     </div>
   )
 }
