@@ -41,7 +41,7 @@ function LineChart({ label, series, formatValue }) {
 function EmptyView({ title, children, chooseView }) {
   return (
     <main className="empty-view">
-      <p className="eyebrow">No entries / yet</p>
+      <p className="eyebrow">No entries yet</p>
       <h1>{title}</h1>
       <p>{children}</p>
       <button className="primary-button" type="button" onClick={() => chooseView('train')}>Go to Train</button>
@@ -55,7 +55,7 @@ function ProgressView({ sessions, chooseView }) {
   const selectedExercise = loggedExercises.find(({ id }) => id === selectedId) ?? loggedExercises[0]
 
   if (!sessions.length) {
-    return <EmptyView title="Work creates the record." chooseView={chooseView}>Complete a workout to start your progress report.</EmptyView>
+    return <EmptyView title="No progress data." chooseView={chooseView}>Complete a workout to start your progress report.</EmptyView>
   }
 
   const latest = sessions.at(-1)
@@ -72,8 +72,8 @@ function ProgressView({ sessions, chooseView }) {
   return (
     <main className="report-view">
       <header className="report-hero">
-        <div><p className="eyebrow">Training record / Progress</p><h1>Work,<br /><em>measured.</em></h1></div>
-        <p>Every finished session adds one mark. Use the trend, then return to the work.</p>
+        <div><p className="eyebrow">Training progress</p><h1>Work,<br /><em>measured.</em></h1></div>
+        <p>Each finished session adds data to these trends.</p>
       </header>
       <section className="metrics" aria-label="Progress summary">
         <div><span>Completed</span><strong>{sessions.length}</strong><small>workouts</small></div>
@@ -81,19 +81,19 @@ function ProgressView({ sessions, chooseView }) {
         <div><span>Most recent</span><strong>{workoutById.get(latest.workoutId)?.label ?? '—'}</strong><small>{formatDate(latest.startedAt)}</small></div>
       </section>
       <section className="report-section" aria-labelledby="duration-title">
-        <header><div><p className="eyebrow">Volume / Time</p><h2 id="duration-title">Workout duration</h2></div><p>{sessions.length} completed {sessions.length === 1 ? 'session' : 'sessions'}</p></header>
+        <header><div><p className="eyebrow">Training time</p><h2 id="duration-title">Workout duration</h2></div><p>{sessions.length} completed {sessions.length === 1 ? 'session' : 'sessions'}</p></header>
         <LineChart label="Workout duration over time" series={durationSeries} formatValue={(value) => formatDuration(value * 1000)} />
       </section>
       <section className="report-section exercise-progress" aria-labelledby="exercise-progress-title">
         <header>
-          <div><p className="eyebrow">Exercise / Trend</p><h2 id="exercise-progress-title">Exercise progression</h2></div>
+          <div><p className="eyebrow">Exercise trend</p><h2 id="exercise-progress-title">Exercise progression</h2></div>
           <label>Exercise<select value={selectedExercise.id} onChange={(event) => setSelectedId(event.target.value)}>{loggedExercises.map((exercise) => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}</select></label>
         </header>
         <p className="trend-label">Best {trendUnit} per session</p>
         <LineChart label={`${selectedExercise.name} best ${trendUnit} over time`} series={trendSeries} formatValue={formatTrend} />
         <ol className="trend-readout">
           {exerciseSeries.map((point) => (
-            <li key={point.date}><time dateTime={point.date}>{formatDate(point.date)}</time><strong>{selectedExercise.mode === 'duration' ? formatDuration(point.bestDuration * 1000) : `${point.bestReps} reps${point.bestWeightKg === null ? '' : ` / ${point.bestWeightKg} kg`}`}</strong></li>
+            <li key={point.date}><time dateTime={point.date}>{formatDate(point.date)}</time><strong>{selectedExercise.mode === 'duration' ? formatDuration(point.bestDuration * 1000) : `Best reps: ${point.bestReps}${point.bestWeightKg === null ? '' : `; best weight: ${point.bestWeightKg} kg`}`}</strong></li>
           ))}
         </ol>
       </section>
@@ -140,17 +140,20 @@ function LogView({ sessions, chooseView, deleteSession }) {
 }
 
 function MediaFrame({ exercise }) {
+  const [playing, setPlaying] = useState(true)
+
   return (
     <div className="media-frame">
-      <img
+      {playing && <img
         src={exercise.media}
         alt={`${exercise.name} demonstration`}
         onError={(event) => { event.currentTarget.hidden = true }}
-      />
+      />}
       <span className="media-placeholder" aria-hidden="true">
         <span>Motion study</span>
-        GIF pending
+        Demonstration stopped
       </span>
+      <button className="media-control" type="button" onClick={() => setPlaying((value) => !value)}>{playing ? 'Stop animation' : 'Play animation'}</button>
     </div>
   )
 }
@@ -217,16 +220,18 @@ function DurationLogger({ exercise, log, updateLog, now }) {
   const validTarget = Number.isInteger(targetDuration) && targetDuration > 0 && targetDuration <= 3600
 
   const pauseOrResume = () => {
+    const actionTime = Date.now()
+    const actionElapsed = elapsedMilliseconds(log.timer, actionTime)
     updateLog({
       ...log,
       timer: running
-        ? { elapsedMs, startedAt: null }
-        : { elapsedMs: log.timer.elapsedMs, startedAt: now },
+        ? { elapsedMs: actionElapsed, startedAt: null }
+        : { elapsedMs: log.timer.elapsedMs, startedAt: actionTime },
     })
   }
 
   const stop = () => {
-    const durationSeconds = Math.floor(elapsedMs / 1000)
+    const durationSeconds = Math.floor(elapsedMilliseconds(log.timer) / 1000)
     updateLog({
       ...log,
       sets: durationSeconds > 0 ? [...log.sets, { durationSeconds }] : log.sets,
@@ -245,7 +250,7 @@ function DurationLogger({ exercise, log, updateLog, now }) {
         <span>/ {formatDuration(validTarget ? targetDuration * 1000 : 0)}</span>
       </div>
       <div className="timer-controls" aria-label={`${exercise.name} timer controls`}>
-        <button type="button" onClick={() => updateLog({ ...log, timer: { elapsedMs: 0, startedAt: now } })} disabled={active || !validTarget}>Start</button>
+        <button type="button" onClick={() => updateLog({ ...log, timer: { elapsedMs: 0, startedAt: Date.now() } })} disabled={active || !validTarget}>Start</button>
         <button type="button" onClick={pauseOrResume} disabled={!active}>{running ? 'Pause' : 'Resume'}</button>
         <button type="button" onClick={stop} disabled={!active}>Stop</button>
         <button type="button" onClick={() => updateLog({ ...log, timer: { elapsedMs: 0, startedAt: null } })} disabled={!active}>Reset</button>
@@ -315,23 +320,25 @@ function App() {
   const [sessionLog, setSessionLog] = useState(loadSessionLog)
   const [now, setNow] = useState(() => Date.now())
   const [message, setMessage] = useState('')
+  const hasActiveSession = activeSession !== null
 
   useEffect(() => {
     saveActiveSession(activeSession)
   }, [activeSession])
 
   useEffect(() => {
-    if (!activeSession) return undefined
+    if (!hasActiveSession) return undefined
     const interval = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(interval)
-  }, [activeSession])
+  }, [hasActiveSession])
 
   const activeWorkout = activeSession && workouts.find(({ id }) => id === activeSession.workoutId)
   const repLogsValid = activeSession && Object.entries(activeSession.exercises).every(([id, log]) => (
     exerciseById.get(id).mode !== 'reps' || log.sets.every(validRepsSet)
   ))
   const hasSets = activeSession && Object.values(activeSession.exercises).some(({ sets }) => sets.length > 0)
-  const canFinish = hasSets && repLogsValid
+  const hasActiveTimer = activeSession && Object.values(activeSession.exercises).some(({ timer }) => timer && (timer.startedAt !== null || timer.elapsedMs > 0))
+  const canFinish = hasSets && repLogsValid && !hasActiveTimer
 
   const updateExercise = (id, log) => {
     setActiveSession((session) => ({ ...session, exercises: { ...session.exercises, [id]: log } }))
@@ -345,11 +352,11 @@ function App() {
 
     const endedAt = Date.now()
     const completed = {
-      id: `${activeSession.workoutId}-${activeSession.startedAt}`,
+      id: crypto.randomUUID(),
       workoutId: activeSession.workoutId,
       startedAt: new Date(activeSession.startedAt).toISOString(),
       endedAt: new Date(endedAt).toISOString(),
-      durationSeconds: Math.floor((endedAt - activeSession.startedAt) / 1000),
+      durationSeconds: Math.max(0, Math.floor((endedAt - activeSession.startedAt) / 1000)),
       exercises: Object.entries(activeSession.exercises).flatMap(([exerciseId, log]) => {
         if (log.sets.length === 0) return []
         const exercise = exerciseById.get(exerciseId)
@@ -418,12 +425,12 @@ function App() {
                 <p className="eyebrow">Session in progress</p>
                 <h2>Workout {activeWorkout.label}</h2>
               </div>
-              <div className="overall-timer"><span>Elapsed</span><strong>{formatDuration(now - activeSession.startedAt)}</strong></div>
+              <div className="overall-timer"><span>Elapsed</span><strong>{formatDuration(Math.max(0, now - activeSession.startedAt))}</strong></div>
               <div className="session-actions">
                 <button className="primary-button" type="button" onClick={finishSession} disabled={!canFinish}>Finish workout</button>
                 <button className="text-button" type="button" onClick={cancelSession}>Cancel session</button>
               </div>
-              {!canFinish && <p className="finish-note">Log at least one valid set to finish.</p>}
+              {!canFinish && <p className="finish-note">{hasActiveTimer ? 'Stop or reset each exercise timer before you finish.' : 'Log at least one valid set to finish.'}</p>}
             </section>
           )}
 
