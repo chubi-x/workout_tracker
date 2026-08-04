@@ -52,4 +52,11 @@ export function appendSession(session, storage = localStorage) {
   const sessions = [...loadSessionLog(storage), session]
     .sort((first, second) => Date.parse(first.startedAt) - Date.parse(second.startedAt))
   storage.setItem(SESSION_LOG_KEY, JSON.stringify(sessions))
+  return sessions
+}
+
+export function removeSession(id, storage = localStorage) {
+  const sessions = loadSessionLog(storage).filter((session) => session.id !== id)
+  storage.setItem(SESSION_LOG_KEY, JSON.stringify(sessions))
+  return sessions
 }

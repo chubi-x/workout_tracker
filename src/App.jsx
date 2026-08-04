@@ -5,10 +5,139 @@ import {
   elapsedMilliseconds,
   formatDuration,
   loadActiveSession,
+  loadSessionLog,
+  removeSession,
   saveActiveSession,
 } from './storage.js'
+import { exerciseProgressSeries, scaleChartPoints, workoutDurationSeries } from './progress.js'
 
 const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
+const workoutById = new Map(workouts.map((workout) => [workout.id, workout]))
+const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
+
+function formatDate(value) {
+  return dateFormatter.format(new Date(value))
+}
+
+function LineChart({ label, series, formatValue }) {
+  const points = scaleChartPoints(series.map(({ value }) => value))
+  const path = points.map(({ x, y }) => `${x},${y}`).join(' ')
+  const maximum = Math.max(...series.map(({ value }) => value))
+
+  return (
+    <div className="line-chart">
+      <svg viewBox="0 0 100 50" role="img" aria-label={label} preserveAspectRatio="none">
+        <line x1="5" y1="40" x2="95" y2="40" />
+        <line x1="5" y1="5" x2="5" y2="40" />
+        <polyline points={path} />
+        {points.map(({ x, y }, index) => <circle key={`${series[index].date}-${index}`} cx={x} cy={y} r="1.25" />)}
+      </svg>
+      <div className="chart-scale"><span>{formatValue(maximum)}</span><span>0</span></div>
+      <div className="chart-dates"><span>{formatDate(series[0].date)}</span><span>{formatDate(series.at(-1).date)}</span></div>
+    </div>
+  )
+}
+
+function EmptyView({ title, children, chooseView }) {
+  return (
+    <main className="empty-view">
+      <p className="eyebrow">No entries / yet</p>
+      <h1>{title}</h1>
+      <p>{children}</p>
+      <button className="primary-button" type="button" onClick={() => chooseView('train')}>Go to Train</button>
+    </main>
+  )
+}
+
+function ProgressView({ sessions, chooseView }) {
+  const loggedExercises = exercises.filter((exercise) => sessions.some((session) => session.exercises.some(({ exerciseId }) => exerciseId === exercise.id)))
+  const [selectedId, setSelectedId] = useState('')
+  const selectedExercise = loggedExercises.find(({ id }) => id === selectedId) ?? loggedExercises[0]
+
+  if (!sessions.length) {
+    return <EmptyView title="Work creates the record." chooseView={chooseView}>Complete a workout to start your progress report.</EmptyView>
+  }
+
+  const latest = sessions.at(-1)
+  const durationSeries = workoutDurationSeries(sessions)
+  const exerciseSeries = exerciseProgressSeries(sessions, selectedExercise.id, selectedExercise.mode)
+  const hasWeights = selectedExercise.mode === 'reps' && exerciseSeries.some(({ bestWeightKg }) => bestWeightKg !== null)
+  const trendSeries = exerciseSeries.flatMap((point) => {
+    if (hasWeights && point.bestWeightKg === null) return []
+    return [{ date: point.date, value: selectedExercise.mode === 'duration' ? point.bestDuration : hasWeights ? point.bestWeightKg : point.bestReps }]
+  })
+  const trendUnit = selectedExercise.mode === 'duration' ? 'duration' : hasWeights ? 'weight' : 'reps'
+  const formatTrend = (value) => selectedExercise.mode === 'duration' ? formatDuration(value * 1000) : hasWeights ? `${value} kg` : `${value} reps`
+
+  return (
+    <main className="report-view">
+      <header className="report-hero">
+        <div><p className="eyebrow">Training record / Progress</p><h1>Work,<br /><em>measured.</em></h1></div>
+        <p>Every finished session adds one mark. Use the trend, then return to the work.</p>
+      </header>
+      <section className="metrics" aria-label="Progress summary">
+        <div><span>Completed</span><strong>{sessions.length}</strong><small>workouts</small></div>
+        <div><span>Training time</span><strong>{formatDuration(sessions.reduce((total, session) => total + session.durationSeconds, 0) * 1000)}</strong><small>total</small></div>
+        <div><span>Most recent</span><strong>{workoutById.get(latest.workoutId)?.label ?? '—'}</strong><small>{formatDate(latest.startedAt)}</small></div>
+      </section>
+      <section className="report-section" aria-labelledby="duration-title">
+        <header><div><p className="eyebrow">Volume / Time</p><h2 id="duration-title">Workout duration</h2></div><p>{sessions.length} completed {sessions.length === 1 ? 'session' : 'sessions'}</p></header>
+        <LineChart label="Workout duration over time" series={durationSeries} formatValue={(value) => formatDuration(value * 1000)} />
+      </section>
+      <section className="report-section exercise-progress" aria-labelledby="exercise-progress-title">
+        <header>
+          <div><p className="eyebrow">Exercise / Trend</p><h2 id="exercise-progress-title">Exercise progression</h2></div>
+          <label>Exercise<select value={selectedExercise.id} onChange={(event) => setSelectedId(event.target.value)}>{loggedExercises.map((exercise) => <option key={exercise.id} value={exercise.id}>{exercise.name}</option>)}</select></label>
+        </header>
+        <p className="trend-label">Best {trendUnit} per session</p>
+        <LineChart label={`${selectedExercise.name} best ${trendUnit} over time`} series={trendSeries} formatValue={formatTrend} />
+        <ol className="trend-readout">
+          {exerciseSeries.map((point) => (
+            <li key={point.date}><time dateTime={point.date}>{formatDate(point.date)}</time><strong>{selectedExercise.mode === 'duration' ? formatDuration(point.bestDuration * 1000) : `${point.bestReps} reps${point.bestWeightKg === null ? '' : ` / ${point.bestWeightKg} kg`}`}</strong></li>
+          ))}
+        </ol>
+      </section>
+    </main>
+  )
+}
+
+function LogView({ sessions, chooseView, deleteSession }) {
+  if (!sessions.length) {
+    return <EmptyView title="The log is empty." chooseView={chooseView}>Complete a workout to make your first entry.</EmptyView>
+  }
+
+  return (
+    <main className="log-view">
+      <header className="log-header"><p className="eyebrow">Chronological record / Newest first</p><h1>Training<br /><em>log.</em></h1></header>
+      <ol className="session-log">
+        {[...sessions].reverse().map((session, index) => {
+          const workout = workoutById.get(session.workoutId)
+          return (
+            <li key={session.id}>
+              <article className="log-entry">
+                <header>
+                  <span className="log-number">{String(sessions.length - index).padStart(2, '0')}</span>
+                  <div><time dateTime={session.startedAt}>{formatDate(session.startedAt)}</time><h2>{workout ? `Workout ${workout.label} / ${workout.name}` : session.workoutId}</h2></div>
+                  <div className="log-duration"><span>Total duration</span><strong>{formatDuration(session.durationSeconds * 1000)}</strong></div>
+                </header>
+                <details>
+                  <summary>View {session.exercises.length} logged {session.exercises.length === 1 ? 'exercise' : 'exercises'}</summary>
+                  <div className="logged-exercises">
+                    {session.exercises.map((log) => {
+                      const exercise = exerciseById.get(log.exerciseId)
+                      return <section key={log.exerciseId}><h3>{exercise?.name ?? log.exerciseId}</h3><ol>{log.sets.map((set, setIndex) => <li key={setIndex}><span>Set {setIndex + 1}</span><strong>{exercise?.mode === 'duration' ? formatDuration(set.durationSeconds * 1000) : `${set.reps} reps${set.weightKg === undefined ? '' : ` / ${set.weightKg} kg`}`}</strong></li>)}</ol></section>
+                    })}
+                  </div>
+                </details>
+                <button className="delete-button" type="button" onClick={() => deleteSession(session)}>Delete entry</button>
+              </article>
+            </li>
+          )
+        })}
+      </ol>
+    </main>
+  )
+}
 
 function MediaFrame({ exercise }) {
   return (
@@ -183,6 +312,7 @@ function validRepsSet(set) {
 function App() {
   const [view, setView] = useState('train')
   const [activeSession, setActiveSession] = useState(restoreSession)
+  const [sessionLog, setSessionLog] = useState(loadSessionLog)
   const [now, setNow] = useState(() => Date.now())
   const [message, setMessage] = useState('')
 
@@ -229,7 +359,7 @@ function App() {
         return [{ exerciseId, sets }]
       }),
     }
-    appendSession(completed)
+    setSessionLog(appendSession(completed))
     setActiveSession(null)
     setMessage('Workout saved to your training log.')
   }
@@ -245,12 +375,17 @@ function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
+  const deleteSession = (session) => {
+    if (!window.confirm(`Delete the ${formatDate(session.startedAt)} workout? This cannot be undone.`)) return
+    setSessionLog(removeSession(session.id))
+  }
+
   return (
     <>
       <header className="site-header">
         <button className="wordmark" type="button" onClick={() => chooseView('train')} aria-label="Work Set home">WORK<span>/</span>SET</button>
         <nav aria-label="Primary navigation">
-          {['train', 'dashboard', 'log'].map((item) => (
+          {['train', 'progress', 'log'].map((item) => (
             <button className={view === item ? 'active' : ''} type="button" key={item} onClick={() => chooseView(item)} aria-current={view === item ? 'page' : undefined}>
               {item}
             </button>
@@ -329,14 +464,9 @@ function App() {
             </ol>
           </aside>}
         </main>
-      ) : (
-        <main className="placeholder-view">
-          <p className="eyebrow">Next field note</p>
-          <h1>{view === 'dashboard' ? 'Progress is coming.' : 'Your log is coming.'}</h1>
-          <p>Completed workouts are stored on this device and are ready for this view.</p>
-          <button className="primary-button" type="button" onClick={() => chooseView('train')}>Return to training</button>
-        </main>
-      )}
+      ) : view === 'progress'
+        ? <ProgressView sessions={sessionLog} chooseView={chooseView} />
+        : <LogView sessions={sessionLog} chooseView={chooseView} deleteSession={deleteSession} />}
 
       <footer className="site-footer">
         <strong>Train with control.</strong>

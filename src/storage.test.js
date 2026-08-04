@@ -7,8 +7,10 @@ import {
   formatDuration,
   loadActiveSession,
   loadSessionLog,
+  removeSession,
   saveActiveSession,
 } from './storage.js'
+import { exerciseProgressSeries, scaleChartPoints, workoutDurationSeries } from './progress.js'
 
 const values = new Map()
 const storage = {
@@ -33,5 +35,23 @@ appendSession(later, storage)
 appendSession(earlier, storage)
 assert.deepEqual(loadSessionLog(storage).map(({ id }) => id), ['earlier', 'later'])
 assert.ok(values.has(SESSION_LOG_KEY))
+removeSession('earlier', storage)
+assert.deepEqual(loadSessionLog(storage).map(({ id }) => id), ['later'])
+
+const sessions = [
+  {
+    startedAt: '2026-08-01T10:00:00.000Z',
+    durationSeconds: 600,
+    exercises: [{ exerciseId: 'row', sets: [{ reps: 8, weightKg: 12 }, { reps: 10, weightKg: 10 }] }],
+  },
+  {
+    startedAt: '2026-08-03T10:00:00.000Z',
+    durationSeconds: 900,
+    exercises: [{ exerciseId: 'row', sets: [{ reps: 12, weightKg: 14 }] }],
+  },
+]
+assert.deepEqual(workoutDurationSeries(sessions).map(({ value }) => value), [600, 900])
+assert.deepEqual(exerciseProgressSeries(sessions, 'row', 'reps').map(({ bestReps, bestWeightKg }) => [bestReps, bestWeightKg]), [[10, 12], [12, 14]])
+assert.deepEqual(scaleChartPoints([10, 20]), [{ x: 5, y: 22.5 }, { x: 95, y: 5 }])
 
 console.log('storage and timer checks passed')
