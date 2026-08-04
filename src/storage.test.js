@@ -21,6 +21,7 @@ const storage = {
 
 assert.equal(elapsedMilliseconds({ elapsedMs: 2_000, startedAt: 10_000 }, 13_500), 5_500)
 assert.equal(elapsedMilliseconds({ elapsedMs: 2_000, startedAt: null }, 99_000), 2_000)
+assert.equal(elapsedMilliseconds({ elapsedMs: 0, startedAt: 15_000 }, 10_000), 0)
 assert.equal(formatDuration(65_999), '01:05')
 
 const active = {

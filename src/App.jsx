@@ -15,6 +15,7 @@ const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]
 const workoutById = new Map(workouts.map((workout) => [workout.id, workout]))
 const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 const DEFAULT_WEIGHT_KG = 16
+const TIMER_BUFFER_MS = 5_000
 
 function formatDate(value) {
   return dateFormatter.format(new Date(value))
@@ -216,6 +217,8 @@ function RepsLogger({ log, updateLog }) {
 function DurationLogger({ exercise, log, updateLog, now }) {
   const elapsedMs = elapsedMilliseconds(log.timer, now)
   const running = log.timer.startedAt !== null
+  const readySeconds = running ? Math.max(0, Math.ceil((log.timer.startedAt - now) / 1000)) : 0
+  const preparing = readySeconds > 0
   const active = running || log.timer.elapsedMs > 0
   const targetDuration = Number(log.targetDuration)
   const validTarget = Number.isInteger(targetDuration) && targetDuration > 0 && targetDuration <= 3600
@@ -247,13 +250,12 @@ function DurationLogger({ exercise, log, updateLog, now }) {
         <input type="number" min="1" max="3600" step="1" required value={log.targetDuration} onChange={(event) => updateLog({ ...log, targetDuration: event.target.value })} />
       </label>
       <div className="timer-readout" role="timer" aria-live="off">
-        <strong>{formatDuration(elapsedMs)}</strong>
-        <span>/ {formatDuration(validTarget ? targetDuration * 1000 : 0)}</span>
+        {preparing ? <><strong>{readySeconds}</strong><span>Get ready</span></> : <><strong>{formatDuration(elapsedMs)}</strong><span>/ {formatDuration(validTarget ? targetDuration * 1000 : 0)}</span></>}
       </div>
       <div className="timer-controls" aria-label={`${exercise.name} timer controls`}>
-        <button type="button" onClick={() => updateLog({ ...log, timer: { elapsedMs: 0, startedAt: Date.now() } })} disabled={active || !validTarget}>Start</button>
-        <button type="button" onClick={pauseOrResume} disabled={!active}>{running ? 'Pause' : 'Resume'}</button>
-        <button type="button" onClick={stop} disabled={!active}>Stop</button>
+        <button type="button" onClick={() => updateLog({ ...log, timer: { elapsedMs: 0, startedAt: Date.now() + TIMER_BUFFER_MS } })} disabled={active || !validTarget}>Start</button>
+        <button type="button" onClick={pauseOrResume} disabled={!active || preparing}>{running ? 'Pause' : 'Resume'}</button>
+        <button type="button" onClick={stop} disabled={!active || preparing}>Stop</button>
         <button type="button" onClick={() => updateLog({ ...log, timer: { elapsedMs: 0, startedAt: null } })} disabled={!active}>Reset</button>
       </div>
       <ol className="duration-sets" aria-label="Completed duration sets">
