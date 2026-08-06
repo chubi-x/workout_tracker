@@ -1,4 +1,4 @@
-const CACHE = 'work-set-v6'
+const CACHE = 'work-set-v7'
 const APP_SHELL = [
   '/',
   '/manifest.webmanifest',

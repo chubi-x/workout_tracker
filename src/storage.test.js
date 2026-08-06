@@ -11,6 +11,7 @@ import {
   saveActiveSession,
 } from './storage.js'
 import { exerciseProgressSeries, scaleChartPoints, workoutDurationSeries } from './progress.js'
+import { completedRepsSets, validOrEmptyRepsSet, validRepsSet } from './session.js'
 
 const values = new Map()
 const storage = {
@@ -23,6 +24,9 @@ assert.equal(elapsedMilliseconds({ elapsedMs: 2_000, startedAt: 10_000 }, 13_500
 assert.equal(elapsedMilliseconds({ elapsedMs: 2_000, startedAt: null }, 99_000), 2_000)
 assert.equal(elapsedMilliseconds({ elapsedMs: 0, startedAt: 15_000 }, 10_000), 0)
 assert.equal(formatDuration(65_999), '01:05')
+assert.equal(validRepsSet({ reps: '10', weightKg: 16 }), true)
+assert.equal(validOrEmptyRepsSet({ reps: '', weightKg: 16 }), true)
+assert.deepEqual(completedRepsSets([{ reps: '10', weightKg: 16 }, { reps: '', weightKg: 16 }]), [{ reps: '10', weightKg: 16 }])
 
 const active = {
   workoutId: 'workout-a',

@@ -235,7 +235,7 @@ select { min-height: 46px; padding: 8px 38px 8px 10px; border: 2px solid var(--i
   .set-row legend { grid-column: 1 / -1; }
   .duration-logger { grid-template-columns: 1fr auto; }
   .timer-controls { grid-column: 1 / -1; }
-  .session-bar { position: static; grid-template-columns: 1fr auto; }
+  .session-bar { top: env(safe-area-inset-top); grid-template-columns: 1fr auto; }
   .session-actions { grid-column: 1 / -1; justify-content: space-between; }
   .finish-note { margin-top: -16px; text-align: left; }
   .prescription { display: inline-block; margin-top: 12px; }

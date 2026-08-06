@@ -10,6 +10,7 @@ import {
   saveActiveSession,
 } from './storage.js'
 import { exerciseProgressSeries, scaleChartPoints, workoutDurationSeries } from './progress.js'
+import { completedRepsSets, validOrEmptyRepsSet, validRepsSet } from './session.js'
 
 const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
 const workoutById = new Map(workouts.map((workout) => [workout.id, workout]))
@@ -199,11 +200,11 @@ function RepsLogger({ log, updateLog }) {
             <legend>Set {index + 1}</legend>
             <label>
               Reps
-              <input type="number" min="1" max="999" step="1" required value={set.reps} onChange={(event) => updateSet(index, 'reps', event.target.value)} />
+              <input type="number" inputMode="numeric" min="1" max="999" step="1" required value={set.reps} onInput={(event) => updateSet(index, 'reps', event.currentTarget.value)} />
             </label>
             <label>
               Weight <span>(kg, optional)</span>
-              <input type="number" min="0.1" max="999" step="0.1" value={set.weightKg} onChange={(event) => updateSet(index, 'weightKg', event.target.value)} />
+              <input type="number" inputMode="decimal" min="0.1" max="999" step="0.1" value={set.weightKg} onInput={(event) => updateSet(index, 'weightKg', event.currentTarget.value)} />
             </label>
             <button className="text-button" type="button" onClick={() => updateLog({ ...log, sets: log.sets.filter((_, setIndex) => setIndex !== index) })}>
               Remove set {index + 1}
@@ -252,7 +253,7 @@ function DurationLogger({ exercise, log, updateLog, now }) {
     <div className="duration-logger">
       <label className="target-input">
         Target duration <span>(seconds)</span>
-        <input type="number" min="1" max="3600" step="1" required value={log.targetDuration} onChange={(event) => updateLog({ ...log, targetDuration: event.target.value })} />
+        <input type="number" inputMode="numeric" min="1" max="3600" step="1" required value={log.targetDuration} onInput={(event) => updateLog({ ...log, targetDuration: event.currentTarget.value })} />
       </label>
       <div className="timer-readout" role="timer" aria-live="off">
         {preparing ? <><strong>{readySeconds}</strong><span>Get ready</span></> : <><strong>{formatDuration(elapsedMs)}</strong><span>/ {formatDuration(validTarget ? targetDuration * 1000 : 0)}</span></>}
@@ -387,12 +388,6 @@ function restoreSession() {
     : null
 }
 
-function validRepsSet(set) {
-  const reps = Number(set.reps)
-  const weight = set.weightKg === '' ? null : Number(set.weightKg)
-  return Number.isInteger(reps) && reps > 0 && reps <= 999 && (weight === null || (weight > 0 && weight <= 999))
-}
-
 function App() {
   const [view, setView] = useState('home')
   const [activeSession, setActiveSession] = useState(restoreSession)
@@ -413,9 +408,11 @@ function App() {
   }, [hasActiveSession])
 
   const repLogsValid = activeSession && Object.entries(activeSession.exercises).every(([id, log]) => (
-    exerciseById.get(id).mode !== 'reps' || log.sets.every(validRepsSet)
+    exerciseById.get(id).mode !== 'reps' || log.sets.every(validOrEmptyRepsSet)
   ))
-  const hasSets = activeSession && Object.values(activeSession.exercises).some(({ sets }) => sets.length > 0)
+  const hasSets = activeSession && Object.entries(activeSession.exercises).some(([id, log]) => (
+    exerciseById.get(id).mode === 'reps' ? log.sets.some(validRepsSet) : log.sets.length > 0
+  ))
   const hasActiveTimer = activeSession && Object.values(activeSession.exercises).some(({ timer }) => timer && (timer.startedAt !== null || timer.elapsedMs > 0))
   const canFinish = hasSets && repLogsValid && !hasActiveTimer
 
@@ -453,8 +450,9 @@ function App() {
         if (log.sets.length === 0) return []
         const exercise = exerciseById.get(exerciseId)
         const sets = exercise.mode === 'reps'
-          ? log.sets.map((set) => ({ reps: Number(set.reps), ...(set.weightKg === '' ? {} : { weightKg: Number(set.weightKg) }) }))
+          ? completedRepsSets(log.sets).map((set) => ({ reps: Number(set.reps), ...(set.weightKg === '' ? {} : { weightKg: Number(set.weightKg) }) }))
           : log.sets
+        if (sets.length === 0) return []
         return [{ exerciseId, sets }]
       }),
     }
