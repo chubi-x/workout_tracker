@@ -14,11 +14,10 @@ export function exerciseProgressSeries(sessions, exerciseId, mode) {
       return [{ date: session.startedAt, bestDuration: Math.max(...log.sets.map((set) => set.durationSeconds)) }]
     }
 
-    const weights = log.sets.flatMap((set) => set.weightKg === undefined ? [] : [set.weightKg])
     return [{
       date: session.startedAt,
-      bestReps: Math.max(...log.sets.map((set) => set.reps)),
-      bestWeightKg: weights.length ? Math.max(...weights) : null,
+      bestReps: log.sets.reduce((total, set) => total + set.reps, 0),
+      bestWeightKg: null,
     }]
   })
 }
