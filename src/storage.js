@@ -1,9 +1,9 @@
-import { exercises, workouts } from './data.js'
+import { adHocExercises, exercises, workouts } from './data.js'
 
 export const ACTIVE_SESSION_KEY = 'work-set.active-session'
 export const SESSION_LOG_KEY = 'work-set.session-log'
 
-const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
+const exerciseById = new Map([...exercises, ...adHocExercises].map((exercise) => [exercise.id, exercise]))
 const workoutById = new Map(workouts.map((workout) => [workout.id, workout]))
 const REP_MIGRATIONS = new Map([['around-the-body-pass', 10]])
 
@@ -91,7 +91,7 @@ function isCompletedSession(session) {
     && Array.isArray(session.exercises) && session.exercises.length > 0
     && session.exercises.every((log) => {
       const exercise = isRecord(log) && exerciseById.get(log.exerciseId)
-      return exercise && workout.exerciseIds.includes(log.exerciseId)
+      return exercise
         && Array.isArray(log.sets) && log.sets.length > 0
         && log.sets.every((set) => isCompletedSet(set, exercise.mode))
     })
@@ -103,11 +103,15 @@ export function loadActiveSession(storage = localStorage) {
   const session = migrateActiveSession(rawSession)
 
   const workout = isRecord(session) && workoutById.get(session.workoutId)
+  const exerciseIds = isRecord(session.exercises) ? Object.keys(session.exercises) : []
   const valid = workout
     && Number.isFinite(session.startedAt)
     && isRecord(session.exercises)
-    && Object.keys(session.exercises).length === workout.exerciseIds.length
-    && workout.exerciseIds.every((id) => isActiveExerciseLog(session.exercises[id], exerciseById.get(id).mode))
+    && workout.exerciseIds.every((id) => exerciseIds.includes(id))
+    && exerciseIds.every((id) => {
+      const exercise = exerciseById.get(id)
+      return exercise && isActiveExerciseLog(session.exercises[id], exercise.mode)
+    })
 
   if (valid) {
     if (JSON.stringify(session) !== JSON.stringify(rawSession)) saveActiveSession(session, storage)
