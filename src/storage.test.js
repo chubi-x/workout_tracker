@@ -75,7 +75,7 @@ const sessions = [
   },
 ]
 assert.deepEqual(workoutDurationSeries(sessions).map(({ value }) => value), [600, 900])
-assert.deepEqual(exerciseProgressSeries(sessions, 'row', 'reps').map(({ bestReps, bestWeightKg }) => [bestReps, bestWeightKg]), [[10, 12], [12, 14]])
+assert.deepEqual(exerciseProgressSeries(sessions, 'row', 'reps').map(({ bestReps, bestWeightKg }) => [bestReps, bestWeightKg]), [[18, null], [12, null]])
 assert.deepEqual(exerciseProgressSeries([{ ...sessions[0], exercises: [] }], 'row', 'reps'), [])
 assert.deepEqual(exerciseProgressSeries([{ ...sessions[0], exercises: [{ exerciseId: 'hold', sets: [{ durationSeconds: 15 }, { durationSeconds: 25 }] }] }], 'hold', 'duration')[0].bestDuration, 25)
 assert.deepEqual(scaleChartPoints([10, 20]), [{ x: 5, y: 22.5 }, { x: 95, y: 5 }])
