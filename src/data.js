@@ -61,6 +61,19 @@ export const exercises = [
   },
 ]
 
+export const adHocExercises = [
+  {
+    id: 'pushups',
+    name: 'Pushups',
+    prescription: 'Reps as desired',
+    mode: 'reps',
+    cue: 'Keep your body rigid and lower under control.',
+    tags: ['Chest', 'Shoulders', 'Triceps'],
+    media: '',
+    source: '',
+  },
+]
+
 export const workouts = [
   {
     id: 'workout-b',
