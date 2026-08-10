@@ -5,6 +5,7 @@ export const SESSION_LOG_KEY = 'work-set.session-log'
 
 const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
 const workoutById = new Map(workouts.map((workout) => [workout.id, workout]))
+const REP_MIGRATIONS = new Map([['around-the-body-pass', 10]])
 
 export function elapsedMilliseconds(timer, now = Date.now()) {
   return timer.elapsedMs + (timer.startedAt === null ? 0 : Math.max(0, now - timer.startedAt))
@@ -27,6 +28,32 @@ function readJson(storage, key) {
 
 function isRecord(value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
+}
+
+function migrateExerciseLog(exerciseId, log) {
+  const reps = REP_MIGRATIONS.get(exerciseId)
+  if (!reps || !isRecord(log) || !Array.isArray(log.sets)) return log
+  const durationSets = log.sets.filter((set) => isRecord(set) && Number.isFinite(set.durationSeconds) && set.durationSeconds > 0)
+  if (durationSets.length === 0) return log
+  return { sets: durationSets.map(() => ({ reps })) }
+}
+
+function migrateActiveSession(session) {
+  if (!isRecord(session) || !isRecord(session.exercises)) return session
+  return {
+    ...session,
+    exercises: Object.fromEntries(Object.entries(session.exercises).map(([exerciseId, log]) => [exerciseId, migrateExerciseLog(exerciseId, log)])),
+  }
+}
+
+function migrateCompletedSession(session) {
+  if (!isRecord(session) || !Array.isArray(session.exercises)) return session
+  return {
+    ...session,
+    exercises: session.exercises.map((log) => isRecord(log)
+      ? { ...log, ...migrateExerciseLog(log.exerciseId, log) }
+      : log),
+  }
 }
 
 function isTimer(timer) {
@@ -71,8 +98,9 @@ function isCompletedSession(session) {
 }
 
 export function loadActiveSession(storage = localStorage) {
-  const session = readJson(storage, ACTIVE_SESSION_KEY)
-  if (!session) return null
+  const rawSession = readJson(storage, ACTIVE_SESSION_KEY)
+  if (!rawSession) return null
+  const session = migrateActiveSession(rawSession)
 
   const workout = isRecord(session) && workoutById.get(session.workoutId)
   const valid = workout
@@ -81,7 +109,10 @@ export function loadActiveSession(storage = localStorage) {
     && Object.keys(session.exercises).length === workout.exerciseIds.length
     && workout.exerciseIds.every((id) => isActiveExerciseLog(session.exercises[id], exerciseById.get(id).mode))
 
-  if (valid) return session
+  if (valid) {
+    if (JSON.stringify(session) !== JSON.stringify(rawSession)) saveActiveSession(session, storage)
+    return session
+  }
   storage.removeItem(ACTIVE_SESSION_KEY)
   return null
 }
@@ -92,8 +123,16 @@ export function saveActiveSession(session, storage = localStorage) {
 }
 
 export function loadSessionLog(storage = localStorage) {
-  const sessions = readJson(storage, SESSION_LOG_KEY)
-  if (Array.isArray(sessions) && sessions.every(isCompletedSession)) return sessions
+  const rawSessions = readJson(storage, SESSION_LOG_KEY)
+  if (!Array.isArray(rawSessions)) {
+    storage.removeItem(SESSION_LOG_KEY)
+    return []
+  }
+  const sessions = rawSessions.map(migrateCompletedSession)
+  if (sessions.every(isCompletedSession)) {
+    if (JSON.stringify(sessions) !== JSON.stringify(rawSessions)) storage.setItem(SESSION_LOG_KEY, JSON.stringify(sessions))
+    return sessions
+  }
   storage.removeItem(SESSION_LOG_KEY)
   return []
 }
