@@ -21,7 +21,8 @@ import {
 import { exerciseProgressSeries, workoutDurationSeries } from './progress.js'
 import { completedRepsSets, validOrEmptyRepsSet, validRepsSet } from './session.js'
 
-const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
+const allExercises = [...exercises, ...adHocExercises]
+const exerciseById = new Map(allExercises.map((exercise) => [exercise.id, exercise]))
 const workoutById = new Map(workouts.map((workout) => [workout.id, workout]))
 const dateFormatter = new Intl.DateTimeFormat(undefined, { day: 'numeric', month: 'short', year: 'numeric' })
 const DEFAULT_WEIGHT_KG = 16
@@ -102,7 +103,7 @@ function EmptyView({ title, children, chooseView }) {
 }
 
 function ProgressView({ sessions, chooseView }) {
-  const loggedExercises = exercises.filter((exercise) => sessions.some((session) => session.exercises.some(({ exerciseId }) => exerciseId === exercise.id)))
+  const loggedExercises = allExercises.filter((exercise) => sessions.some((session) => session.exercises.some(({ exerciseId }) => exerciseId === exercise.id)))
   const [selectedId, setSelectedId] = useState('')
   const selectedExercise = loggedExercises.find(({ id }) => id === selectedId) ?? loggedExercises[0]
 
@@ -196,7 +197,7 @@ function MediaFrame({ exercise }) {
 
   return (
     <div className="media-frame">
-      {playing && <img
+      {playing && exercise.media && <img
         src={exercise.media}
         alt={`${exercise.name} demonstration`}
         onError={(event) => { event.currentTarget.hidden = true }}
@@ -205,12 +206,12 @@ function MediaFrame({ exercise }) {
         <span>Motion study</span>
         Demonstration stopped
       </span>
-      <a className="media-source" href={exercise.source} target="_blank" rel="noopener noreferrer">Tutorial ↗</a>
-      <button className="media-control" type="button" aria-label={playing ? 'Stop animation' : 'Play animation'} onClick={() => setPlaying((value) => !value)}>
+      {exercise.source && <a className="media-source" href={exercise.source} target="_blank" rel="noopener noreferrer">Tutorial ↗</a>}
+      {exercise.media && <button className="media-control" type="button" aria-label={playing ? 'Stop animation' : 'Play animation'} onClick={() => setPlaying((value) => !value)}>
         {playing
           ? <svg viewBox="0 0 16 16" aria-hidden="true"><rect x="3" y="3" width="10" height="10" /></svg>
           : <svg viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2.5 13 8l-9 5.5z" /></svg>}
-      </button>
+      </button>}
     </div>
   )
 }
@@ -375,14 +376,17 @@ function HomeView({ activeSession, openWorkout, startWorkout }) {
   )
 }
 
-function WorkoutDetailView({ workout, activeSession, now, message, updateExercise, startWorkout, finishSession, cancelSession, openWorkout, goHome, canFinish, hasActiveTimer }) {
+function WorkoutDetailView({ workout, activeSession, now, message, updateExercise, addAdHocExercise, startWorkout, finishSession, cancelSession, openWorkout, goHome, canFinish, hasActiveTimer }) {
   const isActive = activeSession?.workoutId === workout.id
+  const activeExerciseIds = isActive ? Object.keys(activeSession.exercises) : workout.exerciseIds
+  const availableAdHoc = adHocExercises.filter(({ id }) => !activeExerciseIds.includes(id))
+
   return (
     <main className="workout-detail">
       <button className="back-button" type="button" onClick={goHome}>← All workouts</button>
       <header className="detail-header">
         <div><p className="eyebrow">Workout {workout.label}</p><h1>{workout.name}</h1></div>
-        <div className="detail-summary"><strong>{workout.exerciseIds.length} exercises</strong><p>{workout.note}</p></div>
+        <div className="detail-summary"><strong>{activeExerciseIds.length} exercises</strong><p>{workout.note}</p></div>
       </header>
       <p className="status-message" role="status">{message}</p>
       {isActive ? (
@@ -400,10 +404,20 @@ function WorkoutDetailView({ workout, activeSession, now, message, updateExercis
       ) : (
         <button className="primary-button detail-start" type="button" onClick={() => startWorkout(workout)}>Start session with 16 kg</button>
       )}
+      {isActive && availableAdHoc.length > 0 && (
+        <section className="session-bar" aria-label="Add exercise">
+          <div><p className="eyebrow">Ad-hoc exercise</p><h2>Add to this workout</h2></div>
+          <div className="session-actions">
+            {availableAdHoc.map((exercise) => (
+              <button className="secondary-button" type="button" key={exercise.id} onClick={() => addAdHocExercise(exercise.id)}>+ {exercise.name}</button>
+            ))}
+          </div>
+        </section>
+      )}
       <section className="detail-exercises" aria-labelledby={`${workout.id}-exercises`}>
         <h2 id={`${workout.id}-exercises`}>Exercises</h2>
         <ol className="exercise-list">
-          {workout.exerciseIds.map((id, index) => (
+          {activeExerciseIds.map((id, index) => (
             <ExerciseRow key={id} exercise={exerciseById.get(id)} number={index + 1} log={isActive ? activeSession.exercises[id] : null} updateLog={(log) => updateExercise(id, log)} now={now} />
           ))}
         </ol>
@@ -432,7 +446,7 @@ function restoreSession() {
 
   const exerciseIds = Object.keys(session.exercises)
   return workout.exerciseIds.every((id) => session.exercises[id])
-    && exerciseIds.every((id) => workout.exerciseIds.includes(id))
+    && exerciseIds.every((id) => exerciseById.has(id))
     ? session
     : null
 }
@@ -467,6 +481,18 @@ function App() {
 
   const updateExercise = (id, log) => {
     setActiveSession((session) => ({ ...session, exercises: { ...session.exercises, [id]: log } }))
+  }
+
+  const addAdHocExercise = (id) => {
+    const exercise = exerciseById.get(id)
+    if (!exercise || !adHocExercises.some(({ id: adHocId }) => adHocId === id)) return
+    setActiveSession((session) => {
+      if (!session || session.exercises[id]) return session
+      const log = exercise.mode === 'duration'
+        ? { targetDuration: exercise.targetDuration, sets: [], timer: { elapsedMs: 0, startedAt: null } }
+        : { sets: [] }
+      return { ...session, exercises: { ...session.exercises, [id]: log } }
+    })
   }
 
   const openWorkout = (workoutId) => {
@@ -542,7 +568,7 @@ function App() {
       </header>
 
       {view === 'home' ? selectedWorkoutId
-        ? <WorkoutDetailView workout={workoutById.get(selectedWorkoutId)} activeSession={activeSession} now={now} message={message} updateExercise={updateExercise} startWorkout={startWorkout} finishSession={finishSession} cancelSession={cancelSession} openWorkout={openWorkout} goHome={() => chooseView('home')} canFinish={canFinish} hasActiveTimer={hasActiveTimer} />
+        ? <WorkoutDetailView workout={workoutById.get(selectedWorkoutId)} activeSession={activeSession} now={now} message={message} updateExercise={updateExercise} addAdHocExercise={addAdHocExercise} startWorkout={startWorkout} finishSession={finishSession} cancelSession={cancelSession} openWorkout={openWorkout} goHome={() => chooseView('home')} canFinish={canFinish} hasActiveTimer={hasActiveTimer} />
         : <HomeView activeSession={activeSession} openWorkout={openWorkout} startWorkout={startWorkout} />
         : view === 'progress'
         ? <ProgressView sessions={sessionLog} chooseView={chooseView} />
