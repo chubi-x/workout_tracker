@@ -1,4 +1,13 @@
 import { useEffect, useState } from 'react'
+import {
+  CartesianGrid,
+  Line,
+  LineChart as RechartsLineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts'
 import { exercises, workouts } from './data.js'
 import {
   appendSession,
@@ -9,7 +18,7 @@ import {
   removeSession,
   saveActiveSession,
 } from './storage.js'
-import { exerciseProgressSeries, scaleChartPoints, workoutDurationSeries } from './progress.js'
+import { exerciseProgressSeries, workoutDurationSeries } from './progress.js'
 import { completedRepsSets, validOrEmptyRepsSet, validRepsSet } from './session.js'
 
 const exerciseById = new Map(exercises.map((exercise) => [exercise.id, exercise]))
@@ -22,21 +31,61 @@ function formatDate(value) {
   return dateFormatter.format(new Date(value))
 }
 
-function LineChart({ label, series, formatValue }) {
-  const points = scaleChartPoints(series.map(({ value }) => value))
-  const path = points.map(({ x, y }) => `${x},${y}`).join(' ')
-  const maximum = Math.max(...series.map(({ value }) => value))
+function ChartTooltip({ active, payload, formatValue }) {
+  const point = payload?.[0]?.payload
+  if (!active || !point) return null
 
   return (
-    <div className="line-chart">
-      <svg viewBox="0 0 100 50" role="img" aria-label={label} preserveAspectRatio="none">
-        <line x1="5" y1="40" x2="95" y2="40" />
-        <line x1="5" y1="5" x2="5" y2="40" />
-        <polyline points={path} />
-        {points.map(({ x, y }, index) => <circle key={`${series[index].date}-${index}`} cx={x} cy={y} r="1.25" />)}
-      </svg>
-      <div className="chart-scale"><span>{formatValue(maximum)}</span><span>0</span></div>
-      <div className="chart-dates"><span>{formatDate(series[0].date)}</span><span>{formatDate(series.at(-1).date)}</span></div>
+    <div className="chart-tooltip">
+      <time dateTime={point.date}>{formatDate(point.date)}</time>
+      <strong>{formatValue(point.value)}</strong>
+    </div>
+  )
+}
+
+function LineChart({ label, series, formatValue }) {
+  const [selection, setSelection] = useState(null)
+  const chartData = series.map((point, index) => ({ ...point, index }))
+  const selectedIndex = selection?.label === label ? selection.index : null
+  const selectedPoint = chartData.find(({ index }) => index === selectedIndex)
+
+  const renderDot = ({ cx, cy, payload }) => (
+    <circle
+      className={`chart-point ${selectedIndex === payload.index ? 'selected' : ''}`}
+      cx={cx}
+      cy={cy}
+      r="5"
+      role="button"
+      tabIndex="0"
+      aria-label={`${formatDate(payload.date)}: ${formatValue(payload.value)}`}
+      onClick={() => setSelection({ label, index: payload.index })}
+      onKeyDown={(event) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setSelection({ label, index: payload.index })
+        }
+      }}
+    />
+  )
+
+  return (
+    <div className="line-chart" role="group" aria-label={label}>
+      <div className="chart-canvas">
+        <ResponsiveContainer width="100%" height="100%">
+          <RechartsLineChart data={chartData} margin={{ top: 12, right: 16, bottom: 8, left: 8 }} accessibilityLayer>
+            <CartesianGrid vertical={false} stroke="rgb(21 21 18 / 20%)" />
+            <XAxis dataKey="date" tickFormatter={formatDate} minTickGap={32} tickLine={false} axisLine={{ stroke: 'rgb(21 21 18 / 35%)' }} />
+            <YAxis domain={[0, 'auto']} tickFormatter={formatValue} width={72} tickLine={false} axisLine={false} />
+            <Tooltip content={<ChartTooltip formatValue={formatValue} />} cursor={{ stroke: 'rgb(21 21 18 / 35%)' }} />
+            <Line type="linear" dataKey="value" stroke="var(--orange)" strokeWidth={3} dot={renderDot} activeDot={false} isAnimationActive={false} />
+          </RechartsLineChart>
+        </ResponsiveContainer>
+      </div>
+      <p className="chart-selection" aria-live="polite">
+        {selectedPoint
+          ? <><time dateTime={selectedPoint.date}>{formatDate(selectedPoint.date)}</time><strong>{formatValue(selectedPoint.value)}</strong></>
+          : <span>Hover over or select a point to view its value.</span>}
+      </p>
     </div>
   )
 }
