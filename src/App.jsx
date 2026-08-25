@@ -42,6 +42,26 @@ function formatDate(value) {
   return dateFormatter.format(new Date(value));
 }
 
+function previousRepsForExercise(sessions, exerciseId) {
+  for (let index = sessions.length - 1; index >= 0; index -= 1) {
+    const log = sessions[index].exercises.find(
+      (entry) => entry.exerciseId === exerciseId,
+    );
+    if (!log) continue;
+
+    const sets = log.sets
+      .map(({ reps }) => Number(reps))
+      .filter((reps) => Number.isFinite(reps));
+    if (sets.length > 0) {
+      return {
+        sets,
+        total: sets.reduce((total, reps) => total + reps, 0),
+      };
+    }
+  }
+  return null;
+}
+
 function ChartTooltip({ active, payload, formatValue }) {
   const point = payload?.[0]?.payload;
   if (!active || !point) return null;
@@ -447,7 +467,7 @@ function MediaFrame({ exercise }) {
   );
 }
 
-function ExerciseDetails({ exercise, number }) {
+function ExerciseDetails({ exercise, number, previousReps }) {
   return (
     <>
       <MediaFrame exercise={exercise} />
@@ -460,6 +480,13 @@ function ExerciseDetails({ exercise, number }) {
           <p className="prescription">{exercise.prescription}</p>
         </div>
         <p className="cue">{exercise.cue}</p>
+        <p className="previous-session">
+          <span>Previous session</span>
+          <strong>
+            {previousReps ? `${previousReps.total} reps` : "No previous reps"}
+          </strong>
+          {previousReps && <small>{previousReps.sets.join(" + ")} reps</small>}
+        </p>
         <ul className="tags" aria-label="Training focus">
           {exercise.tags.map((tag) => (
             <li key={tag}>{tag}</li>
@@ -676,10 +703,21 @@ function DurationLogger({ exercise, log, updateLog, now }) {
   );
 }
 
-function ExerciseRow({ exercise, number, log, updateLog, now }) {
+function ExerciseRow({
+  exercise,
+  number,
+  log,
+  updateLog,
+  now,
+  previousReps,
+}) {
   return (
     <li className={`exercise-row ${log ? "logging" : ""}`}>
-      <ExerciseDetails exercise={exercise} number={number} />
+      <ExerciseDetails
+        exercise={exercise}
+        number={number}
+        previousReps={previousReps}
+      />
       {log && (
         <div className="exercise-controls">
           {exercise.mode === "reps" ? (
@@ -760,6 +798,7 @@ function HomeView({ activeSession, openWorkout, startWorkout }) {
 function WorkoutDetailView({
   workout,
   activeSession,
+  sessions,
   now,
   message,
   updateExercise,
@@ -853,7 +892,7 @@ function WorkoutDetailView({
         </button>
       )}
       {isActive && availableAdHoc.length > 0 && (
-        <section className="session-bar" aria-label="Add exercise">
+        <section className="session-bar ad-hoc-bar" aria-label="Add exercise">
           <div>
             <p className="eyebrow">Ad-hoc exercise</p>
             <h2>Add to this workout</h2>
@@ -886,6 +925,7 @@ function WorkoutDetailView({
               log={isActive ? activeSession.exercises[id] : null}
               updateLog={(log) => updateExercise(id, log)}
               now={now}
+              previousReps={previousRepsForExercise(sessions, id)}
             />
           ))}
         </ol>
@@ -1103,6 +1143,7 @@ function App() {
           <WorkoutDetailView
             workout={workoutById.get(selectedWorkoutId)}
             activeSession={activeSession}
+            sessions={sessionLog}
             now={now}
             message={message}
             updateExercise={updateExercise}

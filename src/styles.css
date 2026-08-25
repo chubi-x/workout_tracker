@@ -95,6 +95,10 @@ h1 em { color: var(--orange); font-style: italic; }
 .exercise-heading h3 { margin: 0; font-size: clamp(1.8rem, 3vw, 2.8rem); line-height: 1; letter-spacing: -.025em; }
 .prescription { flex: none; margin: 0; padding: 6px 10px; border: 1px solid var(--ink); font: 700 .7rem/1 'Libre Franklin', sans-serif; letter-spacing: .06em; text-transform: uppercase; }
 .cue { max-width: 700px; margin: 15px 0; font: 500 .93rem/1.55 'Source Serif 4', serif; }
+.previous-session { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px 14px; margin: 0 0 15px; padding: 10px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+.previous-session span { font-size: .58rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+.previous-session strong { color: var(--orange); font: 800 1.35rem/1 'Barlow Condensed', sans-serif; text-transform: uppercase; }
+.previous-session small { font-size: .62rem; }
 .tags { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
 .tags li { padding-right: 9px; border-right: 1px solid var(--line); font-size: .57rem; font-weight: 700; letter-spacing: .13em; text-transform: uppercase; }
 .tags li:last-child { color: var(--orange); border: 0; }
@@ -130,6 +134,7 @@ h1 em { color: var(--orange); font-style: italic; }
 .detail-exercises > h2 { margin: 0 0 22px; font-size: 2.4rem; }
 .workout-detail .session-bar { margin-top: 24px; }
 .session-bar { position: sticky; top: 0; z-index: 5; display: grid; grid-template-columns: 1fr auto auto; gap: 28px; align-items: center; padding: 20px clamp(20px, 4vw, 64px); border-bottom: 2px solid var(--ink); background: var(--orange); }
+.session-bar.ad-hoc-bar { position: static; }
 .session-bar .eyebrow { margin-bottom: 4px; }
 .session-bar h2 { margin: 0; font-size: 2.4rem; line-height: 1; }
 .overall-timer { display: flex; flex-direction: column; text-align: right; text-transform: uppercase; }
