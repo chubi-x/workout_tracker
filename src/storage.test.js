@@ -29,30 +29,30 @@ assert.equal(validOrEmptyRepsSet({ reps: '', weightKg: 16 }), true)
 assert.deepEqual(completedRepsSets([{ reps: '10', weightKg: 16 }, { reps: '', weightKg: 16 }]), [{ reps: '10', weightKg: 16 }])
 
 const active = {
-  workoutId: 'workout-a',
+  workoutId: 'workout-b',
   startedAt: 10_000,
   exercises: {
-    'supported-one-arm-row': { sets: [] },
-    'floor-kettlebell-pullover': { sets: [] },
-    'half-kneeling-strict-press': { sets: [] },
-    'bottoms-up-press': { sets: [] },
-    'kettlebell-arm-bar': { sets: [] },
-    'suitcase-carry-or-march': { targetDuration: 30, sets: [], timer: { elapsedMs: 0, startedAt: null } },
+    'tall-kneeling-halo': { sets: [] },
+    'tall-kneeling-chop': { sets: [] },
+    'half-kneeling-rotational-press': { sets: [] },
+    'kettlebell-windmill': { sets: [] },
+    'figure-eight-to-hold': { sets: [] },
+    'around-the-body-pass': { sets: [] },
   },
 }
 saveActiveSession(active, storage)
 assert.deepEqual(loadActiveSession(storage), active)
 values.set(ACTIVE_SESSION_KEY, '{bad json')
 assert.equal(loadActiveSession(storage), null)
-values.set(ACTIVE_SESSION_KEY, JSON.stringify({ ...active, exercises: { ...active.exercises, 'suitcase-carry-or-march': { targetDuration: 30, sets: [] } } }))
+values.set(ACTIVE_SESSION_KEY, JSON.stringify({ ...active, exercises: { ...active.exercises, 'around-the-body-pass': { sets: 'invalid' } } }))
 assert.equal(loadActiveSession(storage), null)
 saveActiveSession(active, storage)
 saveActiveSession(null, storage)
 assert.equal(values.has(ACTIVE_SESSION_KEY), false)
 
-const completedExercise = { exerciseId: 'supported-one-arm-row', sets: [{ reps: 8 }] }
-const later = { id: 'later', workoutId: 'workout-a', startedAt: '2026-08-04T11:00:00.000Z', endedAt: '2026-08-04T11:10:00.000Z', durationSeconds: 600, exercises: [completedExercise] }
-const earlier = { id: 'earlier', workoutId: 'workout-a', startedAt: '2026-08-04T10:00:00.000Z', endedAt: '2026-08-04T10:10:00.000Z', durationSeconds: 600, exercises: [completedExercise] }
+const completedExercise = { exerciseId: 'tall-kneeling-halo', sets: [{ reps: 8 }] }
+const later = { id: 'later', workoutId: 'workout-b', startedAt: '2026-08-04T11:00:00.000Z', endedAt: '2026-08-04T11:10:00.000Z', durationSeconds: 600, exercises: [completedExercise] }
+const earlier = { id: 'earlier', workoutId: 'workout-b', startedAt: '2026-08-04T10:00:00.000Z', endedAt: '2026-08-04T10:10:00.000Z', durationSeconds: 600, exercises: [completedExercise] }
 appendSession(later, storage)
 appendSession(earlier, storage)
 assert.deepEqual(loadSessionLog(storage).map(({ id }) => id), ['earlier', 'later'])

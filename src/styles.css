@@ -108,7 +108,7 @@ h1 em { color: var(--orange); font-style: italic; }
 .app-page-header { display: flex; align-items: end; justify-content: space-between; gap: 40px; padding-bottom: 28px; border-bottom: 2px solid var(--ink); }
 .app-page-header h1, .detail-header h1 { margin: 0; font-size: clamp(3.8rem, 8vw, 7rem); line-height: .82; }
 .app-page-header > p { max-width: 390px; margin: 0; font: 500 .95rem/1.55 'Source Serif 4', serif; }
-.workout-overview { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; padding-top: 28px; }
+.workout-overview { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; padding-top: 28px; }
 .workout-card { display: grid; grid-template-rows: 220px 1fr auto; border: 2px solid var(--ink); background: rgb(255 255 255 / 16%); }
 .workout-card .media-frame { min-height: 0; border-bottom: 2px solid var(--ink); }
 .workout-card-copy { padding: 22px; }
