@@ -113,9 +113,8 @@ export const exercises = [
   {
     id: 'around-the-body-pass',
     name: 'Around-the-body pass',
-    prescription: '20–30 sec / direction',
-    mode: 'duration',
-    targetDuration: 20,
+    prescription: '10 reps / direction',
+    mode: 'reps',
     cue: 'Pass the bell close around your body, receive it at shoulder height and pause before the next circle.',
     tags: ['Shoulders', 'Anti-rotation'],
     media: '/media/around-the-body-pass.gif',
