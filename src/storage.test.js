@@ -10,7 +10,7 @@ import {
   removeSession,
   saveActiveSession,
 } from './storage.js'
-import { exerciseProgressSeries, scaleChartPoints, workoutDurationSeries } from './progress.js'
+import { exerciseProgressSeries, workoutDurationSeries, workoutVolumeSeries } from './progress.js'
 import { completedRepsSets, validOrEmptyRepsSet, validRepsSet } from './session.js'
 
 const values = new Map()
@@ -66,19 +66,24 @@ const sessions = [
   {
     startedAt: '2026-08-01T10:00:00.000Z',
     durationSeconds: 600,
-    exercises: [{ exerciseId: 'row', sets: [{ reps: 8, weightKg: 12 }, { reps: 10, weightKg: 10 }] }],
+    exercises: [
+      { exerciseId: 'row', sets: [{ reps: 8, weightKg: 12 }, { reps: 10, weightKg: 10 }] },
+      { exerciseId: 'pushups', sets: [{ reps: 12 }, { reps: 10 }] },
+    ],
   },
   {
     startedAt: '2026-08-03T10:00:00.000Z',
     durationSeconds: 900,
-    exercises: [{ exerciseId: 'row', sets: [{ reps: 12, weightKg: 14 }] }],
+    exercises: [
+      { exerciseId: 'row', sets: [{ reps: 12, weightKg: 14 }] },
+      { exerciseId: 'pushups', sets: [{ reps: 15 }, { reps: 12 }, { reps: 10 }] },
+    ],
   },
 ]
 assert.deepEqual(workoutDurationSeries(sessions).map(({ value }) => value), [600, 900])
-assert.deepEqual(exerciseProgressSeries(sessions, 'row', 'reps').map(({ bestReps, bestWeightKg }) => [bestReps, bestWeightKg]), [[18, null], [12, null]])
-assert.deepEqual(exerciseProgressSeries([{ ...sessions[0], exercises: [] }], 'row', 'reps'), [])
+assert.deepEqual(workoutVolumeSeries(sessions, ['row']).map(({ value }) => value), [18, 12])
+assert.deepEqual(exerciseProgressSeries(sessions, 'pushups', 'reps').map(({ totalReps, setCount }) => [totalReps, setCount]), [[22, 2], [37, 3]])
+assert.deepEqual(exerciseProgressSeries([{ ...sessions[0], exercises: [] }], 'pushups', 'reps'), [])
 assert.deepEqual(exerciseProgressSeries([{ ...sessions[0], exercises: [{ exerciseId: 'hold', sets: [{ durationSeconds: 15 }, { durationSeconds: 25 }] }] }], 'hold', 'duration')[0].bestDuration, 25)
-assert.deepEqual(scaleChartPoints([10, 20]), [{ x: 5, y: 22.5 }, { x: 95, y: 5 }])
-assert.deepEqual(scaleChartPoints([0]), [{ x: 50, y: 40 }])
 
 console.log('storage and timer checks passed')
