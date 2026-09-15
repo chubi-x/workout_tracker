@@ -5,6 +5,20 @@ export function workoutDurationSeries(sessions) {
   }))
 }
 
+export function workoutVolumeSeries(sessions, regularExerciseIds) {
+  const regularIds = new Set(regularExerciseIds)
+  return sessions.map((session) => ({
+    date: session.startedAt,
+    value: session.exercises.reduce((sessionVolume, log) => {
+      if (!regularIds.has(log.exerciseId)) return sessionVolume
+      const exerciseVolume = log.sets.reduce((total, set) => (
+        total + (Number.isFinite(set.reps) ? set.reps : 0)
+      ), 0)
+      return sessionVolume + exerciseVolume
+    }, 0),
+  }))
+}
+
 export function exerciseProgressSeries(sessions, exerciseId, mode) {
   return sessions.flatMap((session) => {
     const log = session.exercises.find((entry) => entry.exerciseId === exerciseId)
@@ -16,16 +30,8 @@ export function exerciseProgressSeries(sessions, exerciseId, mode) {
 
     return [{
       date: session.startedAt,
-      bestReps: log.sets.reduce((total, set) => total + set.reps, 0),
-      bestWeightKg: null,
+      totalReps: log.sets.reduce((total, set) => total + set.reps, 0),
+      setCount: log.sets.length,
     }]
   })
-}
-
-export function scaleChartPoints(values) {
-  const maximum = Math.max(...values)
-  return values.map((value, index) => ({
-    x: values.length === 1 ? 50 : 5 + (index / (values.length - 1)) * 90,
-    y: maximum === 0 ? 40 : 40 - (value / maximum) * 35,
-  }))
 }

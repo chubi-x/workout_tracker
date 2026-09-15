@@ -18,7 +18,7 @@ import {
   removeSession,
   saveActiveSession,
 } from "./storage.js";
-import { exerciseProgressSeries, workoutDurationSeries } from "./progress.js";
+import { exerciseProgressSeries, workoutVolumeSeries } from "./progress.js";
 import {
   completedRepsSets,
   validOrEmptyRepsSet,
@@ -173,14 +173,16 @@ function EmptyView({ title, children, chooseView }) {
 }
 
 function ProgressView({ sessions, chooseView }) {
-  const loggedExercises = allExercises.filter((exercise) =>
+  const loggedAdHocExercises = adHocExercises.filter((exercise) =>
     sessions.some((session) =>
       session.exercises.some(({ exerciseId }) => exerciseId === exercise.id),
     ),
   );
   const [selectedId, setSelectedId] = useState("");
   const selectedExercise =
-    loggedExercises.find(({ id }) => id === selectedId) ?? loggedExercises[0];
+    loggedAdHocExercises.find(({ id }) => id === selectedId) ??
+    loggedAdHocExercises[0] ??
+    null;
 
   if (!sessions.length) {
     return (
@@ -191,41 +193,30 @@ function ProgressView({ sessions, chooseView }) {
   }
 
   const latest = sessions.at(-1);
-  const durationSeries = workoutDurationSeries(sessions);
-  const exerciseSeries = exerciseProgressSeries(
-    sessions,
-    selectedExercise.id,
-    selectedExercise.mode,
-  );
-  const hasWeights =
-    selectedExercise.mode === "reps" &&
-    exerciseSeries.some(({ bestWeightKg }) => bestWeightKg !== null);
-  const trendSeries = exerciseSeries.flatMap((point) => {
-    if (hasWeights && point.bestWeightKg === null) return [];
-    return [
-      {
+  const regularExerciseIds = exercises.map(({ id }) => id);
+  const volumeSeries = workoutVolumeSeries(sessions, regularExerciseIds);
+  const totalVolume = volumeSeries.reduce((total, point) => total + point.value, 0);
+  const exerciseSeries = selectedExercise
+    ? exerciseProgressSeries(
+        sessions,
+        selectedExercise.id,
+        selectedExercise.mode,
+      )
+    : [];
+  const trendSeries = selectedExercise
+    ? exerciseSeries.map((point) => ({
         date: point.date,
         value:
           selectedExercise.mode === "duration"
             ? point.bestDuration
-            : hasWeights
-              ? point.bestWeightKg
-              : point.bestReps,
-      },
-    ];
-  });
-  const trendUnit =
-    selectedExercise.mode === "duration"
-      ? "duration"
-      : hasWeights
-        ? "weight"
-        : "reps";
+            : point.totalReps,
+      }))
+    : [];
+  const trendUnit = selectedExercise?.mode === "duration" ? "duration" : "reps";
   const formatTrend = (value) =>
-    selectedExercise.mode === "duration"
+    selectedExercise?.mode === "duration"
       ? formatDuration(value * 1000)
-      : hasWeights
-        ? `${value} kg`
-        : `${value} reps`;
+      : `${value} reps`;
 
   return (
     <main className="report-view">
@@ -238,7 +229,7 @@ function ProgressView({ sessions, chooseView }) {
             <em>measured.</em>
           </h1>
         </div>
-        <p>Each finished session adds data to these trends.</p>
+        <p>Fixed workouts are measured by volume. Ad-hoc exercises keep their own progression.</p>
       </header>
       <section className="metrics" aria-label="Progress summary">
         <div>
@@ -247,16 +238,9 @@ function ProgressView({ sessions, chooseView }) {
           <small>workouts</small>
         </div>
         <div>
-          <span>Training time</span>
-          <strong>
-            {formatDuration(
-              sessions.reduce(
-                (total, session) => total + session.durationSeconds,
-                0,
-              ) * 1000,
-            )}
-          </strong>
-          <small>total</small>
+          <span>Total volume</span>
+          <strong>{totalVolume}</strong>
+          <small>reps across fixed workouts</small>
         </div>
         <div>
           <span>Most recent</span>
@@ -264,65 +248,89 @@ function ProgressView({ sessions, chooseView }) {
           <small>{formatDate(latest.startedAt)}</small>
         </div>
       </section>
-      <section className="report-section" aria-labelledby="duration-title">
+      <section className="report-section" aria-labelledby="volume-title">
         <header>
           <div>
-            <p className="eyebrow">Training time</p>
-            <h2 id="duration-title">Workout duration</h2>
+            <p className="eyebrow">Training load</p>
+            <h2 id="volume-title">Workout volume</h2>
           </div>
           <p>
             {sessions.length} completed{" "}
             {sessions.length === 1 ? "session" : "sessions"}
           </p>
         </header>
+        <p className="trend-label">
+          Total reps from fixed workout exercises per session. When sets use the same rep count, this is reps × sets.
+        </p>
         <LineChart
-          label="Workout duration over time"
-          series={durationSeries}
-          formatValue={(value) => formatDuration(value * 1000)}
+          label="Workout volume over time"
+          series={volumeSeries}
+          formatValue={(value) => `${value} reps`}
         />
       </section>
-      <section
-        className="report-section exercise-progress"
-        aria-labelledby="exercise-progress-title"
-      >
-        <header>
-          <div>
-            <p className="eyebrow">Exercise trend</p>
-            <h2 id="exercise-progress-title">Exercise progression</h2>
-          </div>
-          <label>
-            Exercise
-            <select
-              value={selectedExercise.id}
-              onChange={(event) => setSelectedId(event.target.value)}
-            >
-              {loggedExercises.map((exercise) => (
-                <option key={exercise.id} value={exercise.id}>
-                  {exercise.name}
-                </option>
-              ))}
-            </select>
-          </label>
-        </header>
-        <p className="trend-label">Best {trendUnit} per session</p>
-        <LineChart
-          label={`${selectedExercise.name} best ${trendUnit} over time`}
-          series={trendSeries}
-          formatValue={formatTrend}
-        />
-        <ol className="trend-readout">
-          {exerciseSeries.map((point) => (
-            <li key={point.date}>
-              <time dateTime={point.date}>{formatDate(point.date)}</time>
-              <strong>
-                {selectedExercise.mode === "duration"
-                  ? formatDuration(point.bestDuration * 1000)
-                  : `Best reps: ${point.bestReps}${point.bestWeightKg === null ? "" : `; best weight: ${point.bestWeightKg} kg`}`}
-              </strong>
-            </li>
-          ))}
-        </ol>
-      </section>
+      {selectedExercise ? (
+        <section
+          className="report-section exercise-progress"
+          aria-labelledby="exercise-progress-title"
+        >
+          <header>
+            <div>
+              <p className="eyebrow">Ad-hoc exercise trend</p>
+              <h2 id="exercise-progress-title">Personal progression</h2>
+            </div>
+            <label>
+              Exercise
+              <select
+                value={selectedExercise.id}
+                onChange={(event) => setSelectedId(event.target.value)}
+              >
+                {loggedAdHocExercises.map((exercise) => (
+                  <option key={exercise.id} value={exercise.id}>
+                    {exercise.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </header>
+          <p className="trend-label">
+            {selectedExercise.mode === "duration"
+              ? "Best duration per session"
+              : "Total reps per session"}
+          </p>
+          <LineChart
+            label={`${selectedExercise.name} ${trendUnit} over time`}
+            series={trendSeries}
+            formatValue={formatTrend}
+          />
+          <ol className="trend-readout">
+            {exerciseSeries.map((point) => (
+              <li key={point.date}>
+                <time dateTime={point.date}>{formatDate(point.date)}</time>
+                <strong>
+                  {selectedExercise.mode === "duration"
+                    ? formatDuration(point.bestDuration * 1000)
+                    : `${point.totalReps} reps across ${point.setCount} ${point.setCount === 1 ? "set" : "sets"}`}
+                </strong>
+              </li>
+            ))}
+          </ol>
+        </section>
+      ) : (
+        <section
+          className="report-section exercise-progress"
+          aria-labelledby="exercise-progress-title"
+        >
+          <header>
+            <div>
+              <p className="eyebrow">Ad-hoc exercise trend</p>
+              <h2 id="exercise-progress-title">Personal progression</h2>
+            </div>
+          </header>
+          <p className="empty-note">
+            Complete an ad-hoc exercise to start its personal progression history.
+          </p>
+        </section>
+      )}
     </main>
   );
 }
@@ -1177,4 +1185,3 @@ function App() {
 }
 
 export default App;
-
